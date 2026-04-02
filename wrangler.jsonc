@@ -2,6 +2,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "gabbaichabad",
   "compatibility_date": "2026-04-02",
+  "main": "./worker.js",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
   "kv_namespaces": [
     {
       "binding": "GABBAI_KV",
