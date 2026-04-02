@@ -622,8 +622,30 @@
           </div>
           <form id="entryForm">
             <div class="form-group">
-              <label class="form-label">פרשת השבוע</label>
-              <select class="form-control" id="parshaSelect" required>
+              <label class="form-label">סוג אירוע</label>
+              <select class="form-control" id="eventTypeSelect" onchange="onEventTypeChange(true)">
+                <option value="shabbat">שבת רגילה</option>
+                <option value="yom_tov">חג / יום טוב</option>
+                <option value="chol_hamoed">חול המועד</option>
+                <option value="shabbat_holiday">שבת שחלה בחג</option>
+                <option value="simchat_torah">שמחת תורה</option>
+                <option value="shemini_atzeret">שמיני עצרת</option>
+                <option value="pesach">פסח</option>
+                <option value="shavuot">שבועות</option>
+                <option value="rosh_hashanah">ראש השנה</option>
+                <option value="yom_kippur">יום כיפור</option>
+                <option value="sukkot">סוכות</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">שם האירוע</label>
+              <input type="text" class="form-control" id="eventNameInput" placeholder="שם האירוע / החג" oninput="this.dataset.userEdited='1'">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">פרשה (כשצריך)</label>
+              <select class="form-control" id="parshaSelect" required onchange="syncParshaToEventName()">
                  <option value="">בחר פרשה...</option>
                  <optgroup label="📖 בראשית">
                    <option value="בראשית">בראשית</option><option value="נח">נח</option><option value="לך לך">לך לך</option>
@@ -832,6 +854,328 @@
     // 1. DATA INITIALIZATION (The 77 Records)
     // =========================================
     const KEY = 'gabbai_db_v7_final';
+    const APP_SCHEMA_VERSION = 2;
+    const STORAGE_PROVIDER = Object.freeze({
+      mode: 'local',
+      localKey: KEY,
+      remoteEndpoint: '',
+      remoteNamespace: 'gabbai-db'
+    });
+
+    const EVENT_TYPES = Object.freeze({
+      shabbat: { label: 'שבת רגילה', slotKey: 'shabbat', requiresParsha: true },
+      yom_tov: { label: 'חג / יום טוב', slotKey: 'yom_tov', requiresParsha: false },
+      chol_hamoed: { label: 'חול המועד', slotKey: 'chol_hamoed', requiresParsha: false },
+      shabbat_holiday: { label: 'שבת שחלה בחג', slotKey: 'shabbat_holiday', requiresParsha: true },
+      rosh_hashanah: { label: 'ראש השנה', slotKey: 'rosh_hashanah', requiresParsha: false },
+      yom_kippur: { label: 'יום כיפור', slotKey: 'yom_kippur', requiresParsha: false },
+      sukkot: { label: 'סוכות', slotKey: 'yom_tov', requiresParsha: false },
+      shemini_atzeret: { label: 'שמיני עצרת', slotKey: 'yom_tov', requiresParsha: false },
+      simchat_torah: { label: 'שמחת תורה', slotKey: 'simchat_torah', requiresParsha: false },
+      pesach: { label: 'פסח', slotKey: 'yom_tov', requiresParsha: false },
+      shavuot: { label: 'שבועות', slotKey: 'yom_tov', requiresParsha: false }
+    });
+
+    const EVENT_SLOT_CONFIG = Object.freeze({
+      shabbat: ['שלישי', 'רביעי', 'חמישי', 'שישי', 'שביעי', 'משלים', 'מפטיר', 'מנחה א׳', 'מנחה ב׳', 'מנחה ג׳'],
+      shabbat_holiday: ['שלישי', 'רביעי', 'חמישי', 'שישי', 'שביעי', 'משלים', 'מפטיר', 'מנחה א׳', 'מנחה ב׳', 'מנחה ג׳'],
+      yom_tov: ['שלישי', 'רביעי', 'חמישי', 'מפטיר'],
+      chol_hamoed: ['שלישי', 'רביעי'],
+      rosh_hashanah: ['שלישי', 'רביעי', 'חמישי', 'מפטיר'],
+      yom_kippur: ['שלישי', 'רביעי', 'חמישי', 'שישי', 'מפטיר'],
+      simchat_torah: ['שלישי', 'רביעי', 'חמישי', 'שישי', 'שביעי', 'כל הנערים', 'חתן תורה', 'חתן בראשית', 'מפטיר']
+    });
+
+    const storageAdapter = {
+      get() {
+        return localStorage.getItem(STORAGE_PROVIDER.localKey);
+      },
+      set(value) {
+        localStorage.setItem(STORAGE_PROVIDER.localKey, value);
+      },
+      async pullRemote() {
+        if (!STORAGE_PROVIDER.remoteEndpoint) return null;
+        const res = await fetch(STORAGE_PROVIDER.remoteEndpoint, { method: 'GET' });
+        if (!res.ok) throw new Error('Remote pull failed');
+        return res.json();
+      },
+      async pushRemote(payload) {
+        if (!STORAGE_PROVIDER.remoteEndpoint) return false;
+        const res = await fetch(STORAGE_PROVIDER.remoteEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        return res.ok;
+      }
+    };
+
+    let currentShabbatSlots = null;
+    let currentAssignmentContext = null;
+    let currentZmanimEventContext = null;
+
+    function normalizeEventType(type) {
+      return EVENT_TYPES[type] ? type : 'shabbat';
+    }
+
+    function getEventConfig(type) {
+      return EVENT_TYPES[normalizeEventType(type)];
+    }
+
+    function getEventSlots(type) {
+      const cfg = getEventConfig(type);
+      return EVENT_SLOT_CONFIG[cfg.slotKey] || EVENT_SLOT_CONFIG.shabbat;
+    }
+
+    function inferEventTypeFromLabel(label) {
+      const txt = String(label || '').trim();
+      if (!txt) return 'shabbat';
+      if (txt.includes('שמחת תורה')) return 'simchat_torah';
+      if (txt.includes('שמיני עצרת')) return 'shemini_atzeret';
+      if (txt.includes('יום כיפור') || txt.includes('יום הכיפורים')) return 'yom_kippur';
+      if (txt.includes('ראש השנה')) return 'rosh_hashanah';
+      if (txt.includes('חול המועד')) return 'chol_hamoed';
+      if (txt.includes('סוכות')) return 'sukkot';
+      if (txt.includes('פסח')) return 'pesach';
+      if (txt.includes('שבועות')) return 'shavuot';
+      return 'yom_tov';
+    }
+
+    function getCanonicalParsha(entry) {
+      return entry?.flags?.parshaCanonical || entry?.parsha || '';
+    }
+
+    function getEntryPrimaryLabel(entry) {
+      return (entry && (entry.eventName || entry.parsha || '') || '').trim();
+    }
+
+    function normalizeHistoryEntry(entry) {
+      const rawParsha = String(entry?.parsha || entry?.eventName || '').trim();
+      const rawEventName = String(entry?.eventName || rawParsha).trim();
+      const flags = (entry?.flags && typeof entry.flags === 'object') ? { ...entry.flags } : {};
+      const eventType = normalizeEventType(entry?.eventType || inferEventTypeFromLabel(rawEventName || rawParsha));
+      const eventName = rawEventName || rawParsha || getEventConfig(eventType).label;
+      const legacyParsha = rawParsha || eventName;
+      return {
+        eventType,
+        eventName,
+        parsha: legacyParsha,
+        dateHe: String(entry?.dateHe || ''),
+        names: Array.isArray(entry?.names) ? entry.names.filter(Boolean) : [],
+        notes: String(entry?.notes || ''),
+        flags,
+        slots: Array.isArray(entry?.slots) ? entry.slots : []
+      };
+    }
+
+    function rebuildMembersFromHistory(history) {
+      const members = {};
+      history.forEach(entry => {
+        entry.names.forEach(rawName => {
+          const cleanName = String(rawName || '').split('(')[0].trim();
+          if (!cleanName) return;
+          if (!members[cleanName]) {
+            members[cleanName] = { aliyot: 0, lastAliyah: '', lastAliyahMeta: null };
+          }
+          members[cleanName].aliyot++;
+          if (!members[cleanName].lastAliyah) {
+            members[cleanName].lastAliyah = entry.parsha;
+            members[cleanName].lastAliyahMeta = {
+              eventType: entry.eventType,
+              eventName: entry.eventName,
+              parsha: entry.parsha,
+              dateHe: entry.dateHe
+            };
+          }
+        });
+      });
+      return members;
+    }
+
+    function ensureDataShape(raw) {
+      const src = (raw && typeof raw === 'object') ? raw : {};
+      const history = Array.isArray(src.history) ? src.history.map(normalizeHistoryEntry) : [];
+      const rebuiltMembers = rebuildMembersFromHistory(history);
+      const mergedMembers = { ...rebuiltMembers };
+
+      Object.entries(src.members || {}).forEach(([name, info]) => {
+        if (!mergedMembers[name]) {
+          mergedMembers[name] = {
+            aliyot: Number(info?.aliyot) || 0,
+            lastAliyah: String(info?.lastAliyah || ''),
+            lastAliyahMeta: info?.lastAliyahMeta || null
+          };
+        }
+      });
+
+      return {
+        ...src,
+        schemaVersion: APP_SCHEMA_VERSION,
+        members: mergedMembers,
+        history
+      };
+    }
+
+    function getHistoryIndexByLastAliyah(value, history) {
+      if (!value) return -1;
+      const list = Array.isArray(history) ? history : loadData().history;
+      return list.findIndex(h => getEntryPrimaryLabel(h) === value || h.parsha === value);
+    }
+
+    function getEventNamePlaceholder(eventType) {
+      switch (normalizeEventType(eventType)) {
+        case 'shabbat': return 'שם האירוע (אם ריק יילקח מהפרשה)';
+        case 'shabbat_holiday': return 'לדוגמה: פסח / צו';
+        case 'chol_hamoed': return 'לדוגמה: חול המועד פסח';
+        case 'simchat_torah': return 'לדוגמה: שמחת תורה';
+        default: return 'לדוגמה: פסח א׳ / שבועות / ראש השנה';
+      }
+    }
+
+    function onEventTypeChange(forceNameSync) {
+      const eventTypeEl = document.getElementById('eventTypeSelect');
+      const eventNameEl = document.getElementById('eventNameInput');
+      const parshaEl = document.getElementById('parshaSelect');
+      if (!eventTypeEl || !eventNameEl || !parshaEl) return;
+
+      const eventType = normalizeEventType(eventTypeEl.value);
+      const cfg = getEventConfig(eventType);
+      parshaEl.disabled = !cfg.requiresParsha;
+      parshaEl.required = !!cfg.requiresParsha;
+      parshaEl.style.opacity = cfg.requiresParsha ? '1' : '0.65';
+      eventNameEl.placeholder = getEventNamePlaceholder(eventType);
+
+      if (forceNameSync && cfg.requiresParsha && parshaEl.value && !eventNameEl.value.trim()) {
+        eventNameEl.value = parshaEl.value.trim();
+      }
+
+      if (forceNameSync && !cfg.requiresParsha && currentZmanimEventContext?.eventName && !eventNameEl.value.trim()) {
+        eventNameEl.value = currentZmanimEventContext.eventName;
+      }
+    }
+
+    function syncParshaToEventName() {
+      const eventTypeEl = document.getElementById('eventTypeSelect');
+      const eventNameEl = document.getElementById('eventNameInput');
+      const parshaEl = document.getElementById('parshaSelect');
+      if (!eventTypeEl || !eventNameEl || !parshaEl) return;
+      const eventType = normalizeEventType(eventTypeEl.value);
+      if ((eventType === 'shabbat' || eventType === 'shabbat_holiday') && !eventNameEl.value.trim()) {
+        eventNameEl.value = parshaEl.value.trim();
+      }
+    }
+
+    function resolveCurrentEventData(parshaFallback) {
+      const eventTypeEl = document.getElementById('eventTypeSelect');
+      const eventNameEl = document.getElementById('eventNameInput');
+      const parshaEl = document.getElementById('parshaSelect');
+      const dateEl = document.getElementById('hebrewDate');
+
+      const eventType = normalizeEventType(eventTypeEl?.value || currentZmanimEventContext?.eventType || 'shabbat');
+      const canonicalParsha = String(parshaFallback || parshaEl?.value || '').trim();
+      const manualEventName = String(eventNameEl?.value || '').trim();
+      const autoEventName = String(currentZmanimEventContext?.eventName || '').trim();
+      const holidayName = String(currentZmanimEventContext?.holidayName || '').trim();
+
+      let eventName = manualEventName;
+      if (!eventName) {
+        if (eventType === 'shabbat_holiday') {
+          eventName = [holidayName || autoEventName, canonicalParsha].filter(Boolean).join(' / ');
+        } else if (eventType === 'shabbat') {
+          eventName = canonicalParsha || autoEventName;
+        } else {
+          eventName = autoEventName || canonicalParsha || getEventConfig(eventType).label;
+        }
+      }
+
+      let dateHe = dateEl ? dateEl.textContent : '';
+      if (!dateHe || dateHe.includes('טוען')) {
+        try { dateHe = toHebrewDate(new Date()); }
+        catch(e) { dateHe = new Date().toLocaleDateString('he-IL'); }
+      }
+
+      return {
+        eventType,
+        eventName: eventName || getEventConfig(eventType).label,
+        parshaCanonical: canonicalParsha,
+        legacyParsha: eventName || canonicalParsha || getEventConfig(eventType).label,
+        holidayName,
+        dateHe
+      };
+    }
+
+    function buildHistoryEntry(names, eventData, extra) {
+      const flags = { ...((extra && extra.flags) || {}) };
+      if (eventData.parshaCanonical) flags.parshaCanonical = eventData.parshaCanonical;
+      if (eventData.holidayName) flags.holidayName = eventData.holidayName;
+      return {
+        eventType: eventData.eventType,
+        eventName: eventData.eventName,
+        parsha: eventData.legacyParsha,
+        dateHe: eventData.dateHe,
+        names,
+        notes: String((extra && extra.notes) || ''),
+        flags,
+        slots: Array.isArray(extra?.slots) ? extra.slots : []
+      };
+    }
+
+    function applyHistoryEntryToMembers(data, entry) {
+      entry.names.forEach(rawName => {
+        const cleanName = String(rawName || '').split('(')[0].trim();
+        if (!cleanName) return;
+        if (!data.members[cleanName]) {
+          data.members[cleanName] = { aliyot: 0, lastAliyah: '', lastAliyahMeta: null };
+        }
+        data.members[cleanName].aliyot++;
+        data.members[cleanName].lastAliyah = entry.parsha;
+        data.members[cleanName].lastAliyahMeta = {
+          eventType: entry.eventType,
+          eventName: entry.eventName,
+          parsha: entry.parsha,
+          dateHe: entry.dateHe
+        };
+      });
+    }
+
+    function populateEventFormFromContext(ctx) {
+      const eventTypeEl = document.getElementById('eventTypeSelect');
+      const eventNameEl = document.getElementById('eventNameInput');
+      const parshaEl = document.getElementById('parshaSelect');
+      if (!eventTypeEl || !eventNameEl || !parshaEl || !ctx) return;
+
+      eventTypeEl.value = normalizeEventType(ctx.eventType || 'shabbat');
+      parshaEl.value = ctx.parshaCanonical || '';
+      eventNameEl.value = ctx.eventName || '';
+      onEventTypeChange(false);
+    }
+
+    function detectHebcalEventContext(data) {
+      const items = Array.isArray(data?.items) ? data.items : [];
+      let parshaName = '';
+      let holidayName = '';
+
+      items.forEach(item => {
+        if (item.category === 'parashat' && !parshaName) parshaName = String(item.hebrew || '').replace('פרשת ', '').replace('פרשה ', '').trim();
+        if (item.category === 'holiday' && !holidayName) holidayName = String(item.hebrew || '').trim();
+      });
+
+      let eventType = 'shabbat';
+      if (holidayName && parshaName) eventType = 'shabbat_holiday';
+      else if (holidayName) eventType = inferEventTypeFromLabel(holidayName);
+
+      let eventName = '';
+      if (eventType === 'shabbat_holiday') eventName = [holidayName, parshaName].filter(Boolean).join(' / ');
+      else if (holidayName) eventName = holidayName;
+      else eventName = parshaName;
+
+      return {
+        eventType,
+        eventName,
+        holidayName,
+        parshaCanonical: parshaName
+      };
+    }
 
     // =========================================
     // המרת מספרים לגימטריא עברית
@@ -893,31 +1237,28 @@
       { parsha: "בראשית", dateHe: "כ\"ז בתשרי", names: ["חנניה כהן", "הלל איזנברג", "שמואל זוהריץ", "שי טויטו", "עומר בראל", "יגאל בן מויאל", "יהודה הרוש", "הרב הכט (מפטיר)", "דרור קיראף (מנחה)", "שמוליק הכט (מנחה)", "יונתן אמסלם (מנחה)"] }
     ];
     function processSeedData() {
-      const members = {};
-      SEED_HISTORY.forEach(entry => {
-        entry.names.forEach(rawName => {
-           let cleanName = rawName.split('(')[0].trim();
-           if(!members[cleanName]) members[cleanName] = { aliyot: 0, lastAliyah: '' };
-           members[cleanName].aliyot++;
-           if(members[cleanName].lastAliyah === '') members[cleanName].lastAliyah = entry.parsha;
-        });
-      });
-      return { members, history: SEED_HISTORY };
+      return ensureDataShape({ history: SEED_HISTORY });
     }
     // =========================================
     // 2. CORE LOGIC & PERSISTENCE
     // =========================================
     function loadData() {
-      const stored = localStorage.getItem(KEY);
-      if (stored) return JSON.parse(stored);
+      const stored = storageAdapter.get();
+      if (stored) {
+        const normalized = ensureDataShape(JSON.parse(stored));
+        if ((normalized.schemaVersion || 0) < APP_SCHEMA_VERSION || stored !== JSON.stringify(normalized)) {
+          storageAdapter.set(JSON.stringify(normalized));
+        }
+        return normalized;
+      }
       const seeded = processSeedData();
-      localStorage.setItem(KEY, JSON.stringify(seeded));
+      storageAdapter.set(JSON.stringify(seeded));
       return seeded;
     }
     function updateDatalist() {
       const dl = document.getElementById('membersDatalist');
       if (!dl) return;
-      const data = JSON.parse(localStorage.getItem(KEY) || '{}');
+      const data = loadData();
       if (!data.members) return;
       dl.innerHTML = Object.keys(data.members)
         .sort((a, b) => a.localeCompare(b, 'he'))
@@ -926,7 +1267,8 @@
     }
     let _dataChanged = false;
     function saveData(data) {
-      localStorage.setItem(KEY, JSON.stringify(data));
+      const normalized = ensureDataShape(data);
+      storageAdapter.set(JSON.stringify(normalized));
       updateDatalist();
       _dataChanged = true;
       updateBackupIndicator();
@@ -935,15 +1277,15 @@
     function lastAliyahDisplay(lastAliyah, short = false) {
       if (!lastAliyah) return 'טרם עלה';
       const data = loadData();
-      const idx = data.history.findIndex(h => h.parsha === lastAliyah);
+      const idx = getHistoryIndexByLastAliyah(lastAliyah, data.history);
       if (idx < 0) return lastAliyah;
 
-      const weeks = idx; // index 0 = latest parsha = 0 weeks ago
-      if (weeks === 0) return short ? `${lastAliyah} ✨` : `${lastAliyah} (השבת!)`;
+      const weeks = idx;
+      if (weeks === 0) return short ? `${lastAliyah} ✨` : `${lastAliyah} (האחרון)`;
 
       let timeStr;
-      if (weeks === 1) timeStr = 'לפני שבוע';
-      else if (weeks < 4) timeStr = `לפני ${weeks} שבועות`;
+      if (weeks === 1) timeStr = 'לפני אירוע אחד';
+      else if (weeks < 4) timeStr = `לפני ${weeks} אירועים`;
       else {
         const months = Math.round(weeks / 4.3);
         if (months === 1) timeStr = 'לפני כחודש';
@@ -956,10 +1298,9 @@
 
       if (short) return `${lastAliyah} (${timeStr})`;
 
-      // Color coding by urgency
-      let color = '#10b981'; // green
-      if (weeks >= 8) color = '#ef4444'; // red
-      else if (weeks >= 4) color = '#f59e0b'; // orange
+      let color = '#10b981';
+      if (weeks >= 8) color = '#ef4444';
+      else if (weeks >= 4) color = '#f59e0b';
 
       return `${lastAliyah} <span style="color:${color}; font-size:0.8rem; font-weight:600;">(${timeStr})</span>`;
     }
@@ -1001,8 +1342,8 @@
       const sorted = [...arr].sort((a,b) => b.aliyot - a.aliyot);
       const recs = [...arr].sort((a,b) => {
         // Primary: longest time since last aliyah first
-        const idxA = data.history.findIndex(h => h.parsha === a.lastAliyah);
-        const idxB = data.history.findIndex(h => h.parsha === b.lastAliyah);
+        const idxA = getHistoryIndexByLastAliyah(a.lastAliyah, data.history);
+        const idxB = getHistoryIndexByLastAliyah(b.lastAliyah, data.history);
         const weeksA = idxA < 0 ? 999 : idxA; // never went up = highest priority
         const weeksB = idxB < 0 ? 999 : idxB;
         if (weeksA !== weeksB) return weeksB - weeksA;
@@ -1074,7 +1415,7 @@
       // ניתוח לפי ספרים
       const books = {};
       Object.entries(TORAH_BOOKS).forEach(([bookName, parshiot]) => {
-        const bookHistory = data.history.filter(h => parshiot.includes(h.parsha));
+        const bookHistory = data.history.filter(h => parshiot.includes(getCanonicalParsha(h)));
         if (bookHistory.length > 0) {
           const bookMembers = {};
           bookHistory.forEach(h => {
@@ -1365,7 +1706,7 @@
       const filterValueEl = document.getElementById('historyFilterValue');
       if (filterType === 'parsha') {
         filterValueEl.style.display = 'block';
-        const allParshiot = [...new Set(data.history.map(h => h.parsha))].sort();
+        const allParshiot = [...new Set(data.history.map(h => getEntryPrimaryLabel(h)))].sort();
         filterValueEl.innerHTML = '<option value="">בחר פרשה...</option>' +
           allParshiot.map(p => `<option value="${p}">${p}</option>`).join('');
       } else if (filterType === 'member') {
@@ -1385,7 +1726,7 @@
 
       if (search) {
         filteredHistory = filteredHistory.filter(h =>
-          h.parsha.includes(search) ||
+          getEntryPrimaryLabel(h).includes(search) ||
           h.names.some(n => n.includes(search)) ||
           (h.dateHe && h.dateHe.includes(search))
         );
@@ -1393,13 +1734,13 @@
 
       if (filterType !== 'all' && filterValue) {
         if (filterType === 'parsha') {
-          filteredHistory = filteredHistory.filter(h => h.parsha === filterValue);
+          filteredHistory = filteredHistory.filter(h => getEntryPrimaryLabel(h) === filterValue);
         } else if (filterType === 'member') {
           filteredHistory = filteredHistory.filter(h =>
             h.names.some(n => n.includes(filterValue) || n.startsWith(filterValue))
           );
         } else if (filterType === 'book') {
-          filteredHistory = filteredHistory.filter(h => getBookForParsha(h.parsha) === filterValue);
+          filteredHistory = filteredHistory.filter(h => getBookForParsha(getCanonicalParsha(h)) === filterValue);
         }
       }
 
@@ -1413,7 +1754,7 @@
       histEl.innerHTML = filteredHistory.map((h, hIdx) => {
         // Find original index in full history
         const origIdx = data.history.indexOf(h);
-        const book = getBookForParsha(h.parsha);
+        const book = getBookForParsha(getCanonicalParsha(h));
         const searchTerm = search.trim();
         const memberFilter = (filterType === 'member' && filterValue) ? filterValue : '';
         const hl = (text, term) => {
@@ -1421,13 +1762,14 @@
           const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
           return text.replace(regex, '<mark style="background:#fef08a; padding:0 2px; border-radius:3px;">$1</mark>');
         };
-        const parshaDisplay = searchTerm ? hl(`פָּרָשַׁת ${h.parsha}`, searchTerm) : `פָּרָשַׁת ${h.parsha}`;
+        const entryLabel = getEntryPrimaryLabel(h);
+        const parshaDisplay = searchTerm ? hl(entryLabel, searchTerm) : entryLabel;
         const dateDisplay = h.dateHe ? (searchTerm ? hl(h.dateHe, searchTerm) : h.dateHe) : '';
         return `
         <div class="member-item" style="flex-direction:column; align-items:stretch;">
            <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:5px;">
              <div>
-               <span style="color:var(--primary); font-size:1.1em;">${parshaDisplay}</span>
+               <span style="color:var(--primary); font-size:1.1em;">${parshaDisplay}</span>${h.eventType ? `<span style="background:#ede9fe; color:#5b21b6; padding:2px 8px; border-radius:4px; font-size:0.75rem; margin-right:8px;">${getEventConfig(h.eventType).label}</span>` : ''}
                ${book ? `<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:4px; font-size:0.75rem; margin-right:8px;">${book}</span>` : ''}
              </div>
              <div style="display:flex; align-items:center; gap:8px;">
@@ -1501,7 +1843,7 @@
       let html = `<div class="profile-card" style="max-width:600px;">
         <div class="profile-header" style="background:linear-gradient(135deg, #4f46e5, #7c3aed); padding:18px;">
           <button class="profile-close" onclick="closeEditParsha()">✕</button>
-          <div style="font-size:1.3rem; font-weight:800;">✏️ עריכת פרשת ${entry.parsha}</div>
+          <div style="font-size:1.3rem; font-weight:800;">✏️ עריכת ${getEntryPrimaryLabel(entry)}</div>
           <div style="font-size:0.9rem; opacity:0.9; margin-top:4px;">${entry.dateHe || ''} • ${entry.names.length} עליות</div>
         </div>
         <div style="padding:20px; max-height:60vh; overflow-y:auto;">
@@ -2386,7 +2728,7 @@
       div.className = 'aliyah-row';
       div.innerHTML = `
         <input type="text" class="form-control" name="aliyahName" placeholder="שם העולה" list="membersDatalist" value="${nameVal}" required>
-        <input type="text" class="form-control" name="aliyahNote" placeholder="הערה (לוי/מפטיר)" value="${noteVal}">
+        <input type="text" class="form-control" name="aliyahNote" placeholder="הערה (מפטיר/מנחה/חתן)" value="${noteVal}">
         <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()" aria-label="מחק שורה" style="padding:0 15px;">✕</button>
       `;
       document.getElementById('inputsContainer').appendChild(div);
@@ -2524,7 +2866,7 @@
                       'דברים': ['דברים','ואתחנן','עקב','ראה','שופטים','כי תצא','כי תבוא','ניצבים','וילך','האזינו','וזאת הברכה'] };
       Object.entries(books).forEach(([book, parshiot]) => {
         if (book.includes(q)) {
-          const inHistory = data.history.filter(h => parshiot.includes(h.parsha));
+          const inHistory = data.history.filter(h => parshiot.includes(getCanonicalParsha(h)));
           results.push({
             category: 'books',
             icon: '📚',
@@ -3394,26 +3736,20 @@
       renderMembersTab();
     }
 
-    let currentShabbatSlots = null;
-
     function generateShabbatAssignment() {
       const data = loadData();
       const stats = getStats();
       const attendance = JSON.parse(localStorage.getItem('gabbai_attendance') || '{}');
-      const recs = stats.recs; // sorted least aliyot first, already filtered
+      const eventData = resolveCurrentEventData();
+      const recs = stats.recs;
+      const lastEventNames = data.history.length > 0 ? data.history[0].names.map(n => n.split('(')[0].trim()) : [];
 
-      // שמות מהשבת האחרונה - נמנע חזרות
-      const lastWeekNames = data.history.length > 0 ?
-        data.history[0].names.map(n => n.split('(')[0].trim()) : [];
-
-      // מועמדים פעילים שלא עלו בשבת שעברה
       const candidates = recs.filter(m => {
         const att = attendance[m.name] || 'active';
-        return att !== 'inactive' && !lastWeekNames.includes(m.name);
+        return att !== 'inactive' && !lastEventNames.includes(m.name);
       });
 
-      // מילוי 7 עליות + מפטיר + 3 מנחה = 11 סלוטים
-      const slotLabels = ['שלישי', 'רביעי', 'חמישי', 'שישי', 'שביעי', 'משלים', 'מפטיר', 'מנחה א׳', 'מנחה ב׳', 'מנחה ג׳'];
+      const slotLabels = getEventSlots(eventData.eventType);
       const slots = [];
       const used = new Set();
 
@@ -3425,8 +3761,6 @@
         }
       }
 
-      // fill remaining from candidates if needed
-      let ci = slots.length;
       for (let j = 0; j < candidates.length && slots.length < slotLabels.length; j++) {
         if (!used.has(candidates[j].name)) {
           slots.push({ label: slotLabels[slots.length], name: candidates[j].name, aliyot: candidates[j].aliyot, lastAliyah: candidates[j].lastAliyah });
@@ -3434,6 +3768,7 @@
         }
       }
 
+      currentAssignmentContext = eventData;
       currentShabbatSlots = slots;
       renderShabbatPreview();
     }
@@ -3445,15 +3780,14 @@
         return;
       }
 
-      const parshaEl = document.getElementById('parshaName');
-      const parsha = parshaEl ? parshaEl.textContent.replace('פרשת ', '').trim() : '';
-      const dateEl = document.getElementById('hebrewDate');
-      const dateHe = dateEl ? dateEl.textContent : '';
+      const ctx = currentAssignmentContext || resolveCurrentEventData();
+      const title = ctx.eventName || getEventConfig(ctx.eventType).label;
+      const dateHe = ctx.dateHe || '';
 
       let html = `<div class="shabbat-preview">`;
       html += `<div style="text-align:center; margin-bottom:15px;">`;
-      html += `<h3 style="color:var(--primary); margin-bottom:5px;">🕍 שיבוץ לשבת`;
-      if (parsha && !parsha.includes('טוען') && !parsha.includes('בחר')) html += ` - פרשת ${parsha}`;
+      html += `<h3 style="color:var(--primary); margin-bottom:5px;">🕍 שיבוץ לאירוע`;
+      if (title && !title.includes('טוען') && !title.includes('בחר')) html += ` - ${title}`;
       html += `</h3>`;
       if (dateHe && !dateHe.includes('טוען')) html += `<span style="color:var(--text-muted);">${dateHe}</span>`;
       html += `</div>`;
@@ -3531,14 +3865,13 @@
     function buildShabbatMessage() {
       if (!currentShabbatSlots || !currentShabbatSlots.length) return '';
 
-      const parshaEl = document.getElementById('parshaName');
-      const parsha = parshaEl ? parshaEl.textContent.replace('פרשת ', '').trim() : '';
-      const dateEl = document.getElementById('hebrewDate');
-      const dateHe = dateEl ? dateEl.textContent : '';
+      const ctx = currentAssignmentContext || resolveCurrentEventData();
+      const title = ctx.eventName || getEventConfig(ctx.eventType).label;
+      const dateHe = ctx.dateHe || '';
 
       let text = '🕍 *שיבוץ עליות לתורה*\n';
-      if (parsha && !parsha.includes('טוען') && !parsha.includes('בחר')) {
-        text += `📖 פרשת ${parsha}`;
+      if (title && !title.includes('טוען') && !title.includes('בחר')) {
+        text += `📖 ${title}`;
         if (dateHe && !dateHe.includes('טוען')) text += ` | ${dateHe}`;
         text += '\n';
       }
@@ -3582,37 +3915,32 @@
     function confirmShabbatAssignment() {
       if (!currentShabbatSlots || !currentShabbatSlots.length) return;
 
-      const parshaEl = document.getElementById('parshaSelect');
-      const parsha = parshaEl ? parshaEl.value : '';
-      if (!parsha) {
+      const eventData = currentAssignmentContext || resolveCurrentEventData();
+      if ((eventData.eventType === 'shabbat' || eventData.eventType === 'shabbat_holiday') && !eventData.parshaCanonical) {
         alert('נא לבחור פרשה קודם בלשונית הזנת נתונים');
         return;
       }
 
       const data = loadData();
-      let dateHe = document.getElementById('hebrewDate').textContent;
-      if (!dateHe || dateHe.includes('טוען')) {
-        try { dateHe = toHebrewDate(new Date()); } catch(e) { dateHe = ''; }
-      }
-
       const names = currentShabbatSlots.map(s => {
         if (s.label === 'מפטיר') return `${s.name} (מפטיר)`;
         if (s.label.startsWith('מנחה')) return `${s.name} (מנחה)`;
+        if (s.label === 'חתן תורה' || s.label === 'חתן בראשית' || s.label === 'כל הנערים') return `${s.name} (${s.label})`;
         return s.name;
       });
 
-      data.history.unshift({ parsha, dateHe, names });
-
-      names.forEach(rawName => {
-        let cleanName = rawName.split('(')[0].trim();
-        if(!data.members[cleanName]) data.members[cleanName] = { aliyot: 0, lastAliyah: '' };
-        data.members[cleanName].aliyot++;
-        data.members[cleanName].lastAliyah = parsha;
+      const entry = buildHistoryEntry(names, eventData, {
+        flags: { source: 'auto-assignment' },
+        slots: currentShabbatSlots.map(s => ({ label: s.label, name: s.name }))
       });
+
+      data.history.unshift(entry);
+      applyHistoryEntryToMembers(data, entry);
 
       saveData(data);
       alert('✅ השיבוץ נשמר בהצלחה!');
       currentShabbatSlots = null;
+      currentAssignmentContext = null;
       document.getElementById('shabbatPreview').innerHTML = '<div style="padding:20px; text-align:center; color:var(--success); font-weight:600;">✅ השיבוץ נשמר! ניתן לצפות בהיסטוריה.</div>';
       renderUI();
     }
@@ -3625,8 +3953,10 @@
         let note = '';
         if (s.label === 'מפטיר') note = 'מפטיר';
         else if (s.label.startsWith('מנחה')) note = 'מנחה';
+        else if (s.label === 'חתן תורה' || s.label === 'חתן בראשית' || s.label === 'כל הנערים') note = s.label;
         addInputRow(s.name, note);
       });
+      if (currentAssignmentContext) populateEventFormFromContext(currentAssignmentContext);
       switchTab('entry');
     }
 
@@ -3917,92 +4247,66 @@
     // 7. ZMANIM & HELPERS
     // =========================================
 async function fetchZmanim() {
-  // תמיד נציג תאריך עברי בגימטריא
   try {
     document.getElementById('hebrewDate').textContent = toHebrewDate(new Date());
   } catch(e) {
     document.getElementById('hebrewDate').textContent = new Date().toLocaleDateString('he-IL');
   }
-  // נסה לטעון זמנים מהאינטרנט
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 שניות timeout
-    
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     const url = 'https://www.hebcal.com/shabbat?cfg=json&geonameid=294210&lg=he&M=on';
-    const res = await fetch(url, { 
-      signal: controller.signal,
-      mode: 'cors'
-    });
+    const res = await fetch(url, { signal: controller.signal, mode: 'cors' });
     clearTimeout(timeoutId);
-    
     if (!res.ok) throw new Error('Network error');
-    
+
     const data = await res.json();
-    // פרשה
-    let parsha = '';
-    data.items.forEach(i => {
-       if(i.category === 'parashat') parsha = i.hebrew;
-       if(i.category === 'holiday' && !parsha) parsha = i.hebrew;
-    });
-    
-    if(parsha) {
-      document.getElementById('parshaName').textContent = parsha;
-      
-      // עדכון הסלקט
-      const sel = document.getElementById('parshaSelect');
-      const cleanParsha = parsha.replace('פרשת ','').replace('פרשה ','').trim();
+    const ctx = detectHebcalEventContext(data);
+    currentZmanimEventContext = ctx;
+
+    document.getElementById('parshaName').textContent = ctx.eventName || 'בחר אירוע ידנית';
+
+    const sel = document.getElementById('parshaSelect');
+    if (ctx.parshaCanonical && sel) {
       let found = false;
-      for(let opt of sel.options) {
-          if(opt.value === cleanParsha) {
-              sel.value = opt.value;
-              found = true;
-              break;
-          }
+      for (let opt of sel.options) {
+        if (opt.value === ctx.parshaCanonical) {
+          sel.value = opt.value;
+          found = true;
+          break;
+        }
       }
-      if(!found && cleanParsha.includes('-')) {
-          const firstParsha = cleanParsha.split('-')[0].trim();
-          for(let opt of sel.options) {
-              if(opt.value === firstParsha) {
-                  sel.value = opt.value;
-                  found = true;
-                  break;
-              }
+      if (!found && ctx.parshaCanonical.includes('-')) {
+        const firstParsha = ctx.parshaCanonical.split('-')[0].trim();
+        for (let opt of sel.options) {
+          if (opt.value === firstParsha) {
+            sel.value = opt.value;
+            break;
           }
+        }
       }
-      if(!found) {
-          for(let opt of sel.options) {
-              if(cleanParsha.includes(opt.value) || opt.value.includes(cleanParsha.split(' ')[0])) {
-                  sel.value = opt.value;
-                  break;
-              }
-          }
-      }
-    } else {
-      document.getElementById('parshaName').textContent = 'בחר פרשה ידנית';
     }
-    // זמני כניסה/יציאה
+
+    populateEventFormFromContext(ctx);
+
     let candles = '', havdalah = '';
     data.items.forEach(i => {
-       if(i.category === 'candles') candles = i.date.split('T')[1].slice(0,5);
-       if(i.category === 'havdalah') havdalah = i.date.split('T')[1].slice(0,5);
+      if (i.category === 'candles') candles = i.date.split('T')[1].slice(0,5);
+      if (i.category === 'havdalah') havdalah = i.date.split('T')[1].slice(0,5);
     });
-    if(candles && havdalah) {
+
+    if (candles && havdalah) {
       document.getElementById('shabbatTimes').textContent = `כניסה: ${candles} | יציאה: ${havdalah}`;
     } else {
       const dayOfWeek = new Date().getDay();
-      if(dayOfWeek < 4) {
-        document.getElementById('shabbatTimes').textContent = "זמנים יתעדכנו ביום חמישי";
-      } else {
-        document.getElementById('shabbatTimes').textContent = "לחץ לרענון זמנים";
-      }
+      document.getElementById('shabbatTimes').textContent = dayOfWeek < 4 ? 'זמנים יתעדכנו ביום חמישי' : 'לחץ לרענון זמנים';
     }
-    // חגים קרובים
+
     try {
       const holUrl = 'https://www.hebcal.com/hebcal?cfg=json&v=1&maj=on&min=on&mod=on&nx=on&geonameid=294210&lg=he';
-      const holRes = await fetch(holUrl, { 
-        signal: controller.signal,
-        mode: 'cors'
-      });
+      const holRes = await fetch(holUrl, { signal: controller.signal, mode: 'cors' });
       const holData = await holRes.json();
       const today = new Date();
       let nextHol = null;
@@ -4010,9 +4314,7 @@ async function fetchZmanim() {
         if (item.category === 'holiday' && item.date) {
           const d = new Date(item.date);
           if (d >= today) {
-            if (!nextHol || d < new Date(nextHol.date)) {
-              nextHol = { name: item.hebrew, date: item.date };
-            }
+            if (!nextHol || d < new Date(nextHol.date)) nextHol = { name: item.hebrew, date: item.date };
           }
         }
       });
@@ -4020,13 +4322,8 @@ async function fetchZmanim() {
         const holDate = new Date(nextHol.date);
         const diffMs = holDate.setHours(0,0,0,0) - today.setHours(0,0,0,0);
         const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-        const label = diffDays === 0
-          ? 'היום!'
-          : diffDays === 1
-            ? 'מחר'
-            : `עוד ${diffDays} ימים`;
-        document.getElementById('nextHoliday').textContent =
-          `${nextHol.name} • ${label}`;
+        const label = diffDays === 0 ? 'היום!' : diffDays === 1 ? 'מחר' : `עוד ${diffDays} ימים`;
+        document.getElementById('nextHoliday').textContent = `${nextHol.name} • ${label}`;
       } else {
         document.getElementById('nextHoliday').textContent = 'אין חג קרוב';
       }
@@ -4034,14 +4331,14 @@ async function fetchZmanim() {
       console.log('Holiday fetch failed:', e2);
       document.getElementById('nextHoliday').textContent = 'לחץ לרענון';
     }
-    
-  } catch(e) { 
+
+  } catch(e) {
     console.log('Zmanim fetch failed:', e);
-    
-    // ערכי ברירת מחדל במקרה של אי-חיבור לאינטרנט
-    document.getElementById('parshaName').textContent = 'בחר פרשה ידנית 👇';
-    document.getElementById('shabbatTimes').textContent = "אין חיבור לאינטרנט";
+    currentZmanimEventContext = { eventType: 'shabbat', eventName: '', holidayName: '', parshaCanonical: '' };
+    document.getElementById('parshaName').textContent = 'בחר אירוע ידנית 👇';
+    document.getElementById('shabbatTimes').textContent = 'אין חיבור לאינטרנט';
     document.getElementById('nextHoliday').textContent = 'לא זמין';
+    onEventTypeChange(false);
   }
 }
 
@@ -4053,6 +4350,7 @@ async function fetchZmanim() {
       updateDatalist();
       fetchZmanim();
       addInputRow(); addInputRow(); addInputRow();
+      onEventTypeChange(false);
       renderUI();
 
       const lastBackupCheck = localStorage.getItem('lastBackupCheck');
@@ -4171,7 +4469,8 @@ async function fetchZmanim() {
     document.getElementById('entryForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const parsha = document.getElementById('parshaSelect').value;
-        if(!parsha) { alert('נא לבחור פרשה'); return; }
+        const eventType = normalizeEventType(document.getElementById('eventTypeSelect')?.value || 'shabbat');
+        if((eventType === 'shabbat' || eventType === 'shabbat_holiday') && !parsha) { alert('נא לבחור פרשה'); return; }
 
         const rows = document.getElementById('inputsContainer').children;
         const nameInputs = [];
@@ -4374,26 +4673,26 @@ async function fetchZmanim() {
 
     function doSaveEntry(nameInputs, parsha) {
       const data = loadData();
-      let dateHe = document.getElementById('hebrewDate').textContent;
-      if (!dateHe || dateHe.includes('טוען')) {
-        try { dateHe = toHebrewDate(new Date()); }
-        catch(e) { dateHe = new Date().toLocaleDateString('he-IL'); }
+      const eventData = resolveCurrentEventData(parsha);
+
+      if ((eventData.eventType === 'shabbat' || eventData.eventType === 'shabbat_holiday') && !eventData.parshaCanonical) {
+        alert('נא לבחור פרשה');
+        return;
       }
 
       const names = nameInputs.map(n => n.note ? `${n.name} (${n.note})` : n.name);
-      data.history.unshift({ parsha, dateHe, names });
+      const entry = buildHistoryEntry(names, eventData, { flags: { source: 'manual-entry' } });
+      data.history.unshift(entry);
+      applyHistoryEntryToMembers(data, entry);
 
-      names.forEach(rawName => {
-         let cleanName = rawName.split('(')[0].trim();
-         if(!data.members[cleanName]) data.members[cleanName] = { aliyot: 0, lastAliyah: '' };
-         data.members[cleanName].aliyot++;
-         data.members[cleanName].lastAliyah = parsha;
-      });
       saveData(data);
       alert('הנתונים נשמרו בהצלחה!');
       document.getElementById('entryForm').reset();
       document.getElementById('inputsContainer').innerHTML = '';
       addInputRow(); addInputRow();
+      currentAssignmentContext = null;
+      currentZmanimEventContext = currentZmanimEventContext || { eventType: 'shabbat', eventName: '', holidayName: '', parshaCanonical: '' };
+      onEventTypeChange(false);
       switchTab('dashboard');
     }
   </script>
