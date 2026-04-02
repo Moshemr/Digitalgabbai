@@ -1,14 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "digitalgabbai",
+  "name": "gabbaichabad",
   "compatibility_date": "2026-04-02",
-  "observability": {
-    "enabled": true
-  },
-  "assets": {
-    "directory": "."
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
+  "kv_namespaces": [
+    {
+      "binding": "GABBAI_KV",
+      "id": "a2f9477506b9488ca364e958519c8ead"
+    }
   ]
 }
