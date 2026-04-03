@@ -1317,8 +1317,22 @@
       }
     }
 
+    function getHalachicDateForOmer(date) {
+      const base = new Date(date || new Date());
+      const halachicDate = new Date(base);
+
+      // יום הלכתי מתחלף בערב (בערך אחרי שקיעה) — לא בחצות.
+      // ללא חישוב שקיעה מדויק (תלוי מיקום), משתמשים בסף שמרני לערב.
+      const hour = halachicDate.getHours();
+      if (hour >= 18) {
+        halachicDate.setDate(halachicDate.getDate() + 1);
+      }
+      return halachicDate;
+    }
+
     function getOmerDay(date) {
-      const fmt = (opts) => new Intl.DateTimeFormat('he-IL-u-ca-hebrew', opts).format(date);
+      const halachicDate = getHalachicDateForOmer(date);
+      const fmt = (opts) => new Intl.DateTimeFormat('he-IL-u-ca-hebrew', opts).format(halachicDate);
       const day = parseInt(fmt({ day: 'numeric' }), 10);
       const rawMonth = String(fmt({ month: 'long' }) || '');
       const month = rawMonth.replace(/^ב/, '').replace(/\s+/g, '');
