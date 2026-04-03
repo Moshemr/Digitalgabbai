@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta id="appViewport" name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>הגבאי הדיגיטלי</title>
   <style>
     html,body{margin:0;padding:0;height:100%;background:#f8fafc}
@@ -22,7 +22,6 @@
       const DIRECT_TABS = new Set(['dashboard', 'entry', 'insights', 'recommendations', 'members', 'trends', 'history']);
       let lastSnapshot = '';
       let hashListenerBound = false;
-
       function snapshotStore() {
         const localStore = {};
         SYNC_KEYS.forEach((key) => {
@@ -112,6 +111,9 @@
         if (!DIRECT_TABS.has(hash)) return;
         frameWindow.switchTab(hash);
       }
+
+      configureViewportForDevice();
+      window.addEventListener('resize', configureViewportForDevice);
 
       await pullRemoteStore();
       document.getElementById('appFrame').src = APP_HTML;

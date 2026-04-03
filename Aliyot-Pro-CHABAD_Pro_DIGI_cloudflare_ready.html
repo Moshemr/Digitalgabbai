@@ -109,6 +109,20 @@
       color: white;
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
+    .tab-share-btn {
+      margin-right: 8px;
+      background: #eef2ff;
+      color: var(--primary);
+      border: 1px solid #c7d2fe;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-share-btn:hover { background: #dbeafe; border-color: #93c5fd; }
     /* Main Content Area */
     .tab-panel { display: none; animation: fadeIn 0.3s ease-out; }
     .tab-panel.active { display: block; }
@@ -358,6 +372,12 @@
         padding: 9px 14px;
         font-size: 0.92rem;
         flex: 0 0 auto;
+      }
+      .tab-share-btn {
+        width: 100%;
+        margin: 0 0 10px 0;
+        min-height: 40px;
+        font-size: 0.9rem;
       }
       .member-item {
         flex-direction: column;
@@ -1512,6 +1532,76 @@
     // =========================================
     // 3. UI RENDERING
     // =========================================
+    const TAB_LABELS = {
+      dashboard: 'דשבורד',
+      entry: 'הזנת נתונים',
+      insights: 'תובנות AI',
+      recommendations: 'המלצות',
+      members: 'מתפללים',
+      trends: 'מגמות',
+      history: 'היסטוריה'
+    };
+
+    function getActiveTabId() {
+      return document.querySelector('.tab-panel.active')?.id || 'dashboard';
+    }
+
+    function getShareBaseUrl() {
+      try {
+        const topUrl = new URL(window.top.location.href);
+        topUrl.hash = '';
+        topUrl.search = '';
+        return topUrl.toString();
+      } catch (_) {
+        const current = new URL(window.location.href);
+        current.hash = '';
+        current.search = '';
+        return current.toString();
+      }
+    }
+
+    function getTabShareUrl(tabId) {
+      return `${getShareBaseUrl()}#${tabId}`;
+    }
+
+    async function shareTab(tabId) {
+      const id = tabId || getActiveTabId();
+      const title = TAB_LABELS[id] || 'עמוד';
+      const shareUrl = getTabShareUrl(id);
+      const payload = {
+        title: `הגבאי הדיגיטלי - ${title}`,
+        text: `קישור ישיר לעמוד ${title}`,
+        url: shareUrl
+      };
+      try {
+        if (navigator.share) {
+          await navigator.share(payload);
+          return;
+        }
+      } catch (_) {}
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert(`✅ הקישור לעמוד "${title}" הועתק:\n${shareUrl}`);
+      } catch (_) {
+        prompt('העתק את הקישור:', shareUrl);
+      }
+    }
+
+    function setupTabShareButtons() {
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        if (panel.querySelector('.tab-share-btn')) return;
+        const firstHeader = panel.querySelector('h2');
+        if (!firstHeader) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tab-share-btn';
+        btn.textContent = '🔗 שתף עמוד';
+        btn.setAttribute('aria-label', `שתף קישור לעמוד ${TAB_LABELS[panel.id] || panel.id}`);
+        btn.addEventListener('click', () => shareTab(panel.id));
+        firstHeader.insertAdjacentElement('afterend', btn);
+      });
+    }
+
     function switchTab(id) {
       document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
       document.getElementById(id).classList.add('active');
@@ -1524,6 +1614,16 @@
             btn.setAttribute('tabindex', 0);
           }
       });
+      if (window.location.hash !== `#${id}`) history.replaceState(null, '', `#${id}`);
+      try {
+        if (window.top && window.top !== window) {
+          const topUrl = new URL(window.top.location.href);
+          if (topUrl.hash !== `#${id}`) {
+            topUrl.hash = id;
+            window.top.history.replaceState(null, '', topUrl.toString());
+          }
+        }
+      } catch (_) {}
       renderUI();
     }
     function renderUI() {
@@ -4409,6 +4509,7 @@ async function fetchZmanim() {
       fetchZmanim();
       addInputRow(); addInputRow(); addInputRow();
       onEventTypeChange(false);
+      setupTabShareButtons();
       renderUI();
 
       const lastBackupCheck = localStorage.getItem('lastBackupCheck');
