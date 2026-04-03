@@ -22,20 +22,6 @@
       const DIRECT_TABS = new Set(['dashboard', 'entry', 'insights', 'recommendations', 'members', 'trends', 'history']);
       let lastSnapshot = '';
       let hashListenerBound = false;
-
-      function configureViewportForDevice() {
-        const viewportMeta = document.getElementById('appViewport');
-        if (!viewportMeta) return;
-        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-          || window.matchMedia('(max-width: 900px)').matches;
-        viewportMeta.setAttribute(
-          'content',
-          isMobile
-            ? 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
-            : 'width=device-width, initial-scale=1.0'
-        );
-      }
-
       function snapshotStore() {
         const localStore = {};
         SYNC_KEYS.forEach((key) => {
