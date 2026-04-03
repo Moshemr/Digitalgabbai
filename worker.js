@@ -56,9 +56,21 @@ export default {
       }
     }
 
-    return env.ASSETS.fetch(request);
+    const assetResponse = await env.ASSETS.fetch(request);
+    if (shouldBypassHtmlCache(url.pathname)) {
+      return withHeaders(assetResponse, {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+      });
+    }
+    return assetResponse;
   }
 };
+
+function shouldBypassHtmlCache(pathname) {
+  return pathname === '/' ||
+    pathname === '/index.html' ||
+    pathname === '/Aliyot-Pro-CHABAD_Pro_DIGI_cloudflare_ready.html';
+}
 
 function getSiteId(request, url) {
   return request.headers.get('X-Gabbai-Site') || url.searchParams.get('siteId') || 'default';
@@ -90,5 +102,15 @@ function json(payload, status = 200, extraHeaders = {}) {
       'Content-Type': 'application/json; charset=utf-8',
       ...extraHeaders
     }
+  });
+}
+
+function withHeaders(response, headers) {
+  const merged = new Headers(response.headers);
+  Object.entries(headers).forEach(([key, value]) => merged.set(key, value));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: merged
   });
 }

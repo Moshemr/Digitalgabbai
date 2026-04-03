@@ -13,10 +13,7 @@
       "binding": "GABBAI_KV",
       "id": "a2f9477506b9488ca364e958519c8ead"
     }
-  ]
-}
-
-{
+  ],
   "observability": {
     "logs": {
       "enabled": false,
