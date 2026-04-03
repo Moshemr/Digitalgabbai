@@ -19,7 +19,7 @@
       const REMOTE_ENDPOINT = '/api/state';
       const SITE_ID = 'chabad-main';
       const SYNC_KEYS = ['gabbai_db_v7_final','gabbai_attendance','gabbai_notes','gabbai_tags'];
-      const DIRECT_TABS = new Set(['dashboard', 'entry', 'insights', 'recommendations', 'members', 'trends', 'history']);
+      const DIRECT_TABS = new Set(['dashboard', 'entry', 'insights', 'recommendations', 'longabsent', 'members', 'trends', 'history']);
       let lastSnapshot = '';
       let hashListenerBound = false;
       function snapshotStore() {
