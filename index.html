@@ -112,6 +112,20 @@
         frameWindow.switchTab(hash);
       }
 
+      function configureViewportForDevice() {
+        const viewportMeta = document.getElementById('appViewport');
+        if (!viewportMeta) return;
+
+        const isiOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        const viewport = isiOS
+          ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
+          : 'width=device-width, initial-scale=1.0';
+
+        viewportMeta.setAttribute('content', viewport);
+      }
+
       configureViewportForDevice();
       window.addEventListener('resize', configureViewportForDevice);
 
