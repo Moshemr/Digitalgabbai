@@ -2438,7 +2438,7 @@
 
       const lines = members.map((m, idx) => {
         const oneAliyahText = m.aliyot === 1 ? ' • עלה פעם אחת בלבד' : '';
-        const lastText = m.lastAliyah ? ` • אחרונה: ${lastAliyahDisplay(m.lastAliyah)}` : '';
+        const lastText = m.lastAliyah ? ` • אחרונה: ${lastAliyahDisplay(m.lastAliyah, true)}` : '';
         return `${idx + 1}. ${m.name} — ${m.eventsSinceLastAliyah} שבתות/אירועים ללא עליה${oneAliyahText}${lastText}`;
       });
 
