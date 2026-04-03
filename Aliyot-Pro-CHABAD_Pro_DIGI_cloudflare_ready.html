@@ -2451,6 +2451,7 @@
 
     function getLongAbsentMembers(minWeeks = 13) {
       const data = loadData();
+      const guestMap = getGuestMembersMap();
       return Object.entries(data.members)
         .map(([name, info]) => {
           const idx = getHistoryIndexByLastAliyah(info.lastAliyah, data.history);
@@ -2459,23 +2460,27 @@
             name,
             aliyot: Number(info.aliyot) || 0,
             lastAliyah: info.lastAliyah || '',
-            eventsSinceLastAliyah
+            eventsSinceLastAliyah,
+            isManuallyGuest: Boolean(guestMap[name])
           };
         })
         .filter(member => member.aliyot >= 1 && member.eventsSinceLastAliyah >= minWeeks)
-        .filter(member => !isGuestMember(member.name))
-        .sort((a, b) => b.eventsSinceLastAliyah - a.eventsSinceLastAliyah);
+        .sort((a, b) => {
+          if (a.isManuallyGuest !== b.isManuallyGuest) return a.isManuallyGuest ? 1 : -1;
+          return b.eventsSinceLastAliyah - a.eventsSinceLastAliyah;
+        });
     }
 
     function toggleLongAbsentGuest(memberName) {
-      const marked = getGuestMembersMap()[memberName];
+      const marked = Boolean(getGuestMembersMap()[memberName]);
       if (marked) {
         setGuestMember(memberName, false);
-        alert(`הוסר סימון אורח עבור "${memberName}".`);
+        alert(`"${memberName}" הוחזר לרשימת המתפללים הקבועים.`);
       } else {
         setGuestMember(memberName, true);
         alert(`"${memberName}" סומן כמתפלל אורח, והוא יוחרג מספירות קבועות.`);
       }
+      renderLongAbsentTab();
       renderAll();
     }
 
@@ -2491,16 +2496,22 @@
 
       listEl.innerHTML = members.map(m => {
         const esc = m.name.replace(/'/g, "\\'");
-        const guestBtn = `<button class="btn-icon-small" onclick="toggleLongAbsentGuest('${esc}')" title="סמן כמתפלל אורח" aria-label="סמן כאורח">🤗</button>`;
+        const guestBtn = m.isManuallyGuest
+          ? `<button class="btn btn-success" onclick="toggleLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="סמן כמתפלל קבוע" style="padding:6px 12px; font-size:0.82rem; background:#16a34a;">✅ מתפלל קבוע</button>`
+          : `<button class="btn-icon-small" onclick="toggleLongAbsentGuest('${esc}')" title="סמן כמתפלל אורח" aria-label="סמן כאורח">🤗</button>`;
         const oneAliyahBadge = m.aliyot === 1
           ? '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">עלה פעם אחת בלבד</span>'
           : '';
+        const guestBadge = m.isManuallyGuest
+          ? '<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">מסומן כאורח</span>'
+          : '';
         return `
-          <div class="member-item">
+          <div class="member-item" style="${m.isManuallyGuest ? 'opacity:0.95; border-color:#fecaca; background:#fff7ed;' : ''}">
             <div class="member-right">
               <div class="badge-circle bg-red">${m.eventsSinceLastAliyah}</div>
               <div class="member-name clickable-name" onclick="openProfile('${esc}')">${m.name}</div>
               ${oneAliyahBadge}
+              ${guestBadge}
             </div>
             <div class="member-left">
               <span>לא עלה כבר ${m.eventsSinceLastAliyah} שבתות/אירועים</span>
