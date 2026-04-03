@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "gabbaichabad",
+  "name": "digitalgabbai",
   "compatibility_date": "2026-04-02",
   "main": "./worker.js",
   "assets": {
