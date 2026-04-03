@@ -14,8 +14,9 @@
   <div id="loading" class="loading">🤖 טוען את הגבאי הדיגיטלי…</div>
   <iframe id="appFrame" src="about:blank" title="הגבאי הדיגיטלי"></iframe>
   <script>
+    const APP_HTML = '/Aliyot-Pro-CHABAD_Pro_DIGI_cloudflare_ready.html';
+
     (async function () {
-      const APP_HTML = '/Aliyot-Pro-CHABAD_Pro_DIGI_cloudflare_ready.html';
       const REMOTE_ENDPOINT = '/api/state';
       const SITE_ID = 'chabad-main';
       const SYNC_KEYS = ['gabbai_db_v7_final','gabbai_attendance','gabbai_notes','gabbai_tags'];
@@ -25,8 +26,12 @@
       function snapshotStore() {
         const localStore = {};
         SYNC_KEYS.forEach((key) => {
-          const value = localStorage.getItem(key);
-          if (typeof value === 'string') localStore[key] = value;
+          try {
+            const value = localStorage.getItem(key);
+            if (typeof value === 'string') localStore[key] = value;
+          } catch (err) {
+            console.warn('Local storage read failed for key:', key, err);
+          }
         });
         return localStore;
       }
@@ -42,7 +47,12 @@
           const store = payload && payload.state && payload.state.localStore;
           if (!store || typeof store !== 'object') return;
           Object.entries(store).forEach(([key, value]) => {
-            if (typeof value === 'string') localStorage.setItem(key, value);
+            if (typeof value !== 'string') return;
+            try {
+              localStorage.setItem(key, value);
+            } catch (err) {
+              console.warn('Local storage write failed for key:', key, err);
+            }
           });
         } catch (err) {
           console.warn('Remote bootstrap failed:', err);
@@ -112,10 +122,27 @@
         frameWindow.switchTab(hash);
       }
 
-      configureViewportForDevice();
-      window.addEventListener('resize', configureViewportForDevice);
+      function configureViewportForDevice() {
+        const viewportMeta = document.getElementById('appViewport');
+        if (!viewportMeta) return;
 
-      await pullRemoteStore();
+        const isiOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        const viewport = isiOS
+          ? 'width=device-width, initial-scale=1.0, viewport-fit=cover'
+          : 'width=device-width, initial-scale=1.0';
+
+        viewportMeta.setAttribute('content', viewport);
+      }
+
+      try {
+        configureViewportForDevice();
+        window.addEventListener('resize', configureViewportForDevice);
+      } catch (err) {
+        console.warn('Viewport configuration skipped:', err);
+      }
+
       document.getElementById('appFrame').src = APP_HTML;
       document.getElementById('appFrame').addEventListener('load', function(){
         document.getElementById('loading').style.display = 'none';
@@ -129,10 +156,15 @@
           hashListenerBound = true;
         }
       });
+      await pullRemoteStore();
       setInterval(pushRemoteStore, 2000);
       window.addEventListener('beforeunload', pushRemoteStore);
     })().catch((err) => {
-      document.getElementById('loading').textContent = 'שגיאה בטעינת המערכת';
+      document.getElementById('loading').textContent = 'אירעה שגיאה, טוען מחדש…';
+      const frame = document.getElementById('appFrame');
+      if (frame && frame.src !== APP_HTML) {
+        frame.src = APP_HTML;
+      }
       console.error(err);
     });
   </script>
