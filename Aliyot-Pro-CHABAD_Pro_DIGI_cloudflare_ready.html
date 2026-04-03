@@ -602,6 +602,7 @@
         <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('entry')">✍️ הזנת נתונים</button>
         <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('insights')">🧠 תובנות AI</button>
         <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('recommendations')">💡 המלצות</button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('longabsent')">⏳ לא עלו 3+ חודשים</button>
         <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('members')">👥 מתפללים</button>
         <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('trends')">📈 מגמות</button>
         <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('history')">📜 היסטוריה</button>
@@ -785,6 +786,19 @@
             <button class="btn btn-secondary" onclick="copyRecsToClipboard()" style="font-size:1rem;">📋 העתק לקליפבורד</button>
           </div>
           <div class="member-list" id="recList"></div>
+        </div>
+      </section>
+
+      <section id="longabsent" class="tab-panel" role="tabpanel">
+        <div class="card">
+          <h2>⏳ מתפללים שלא עלו 3 חודשים ומעלה</h2>
+          <p style="color: var(--text-muted); margin-bottom: 12px;">
+            הרשימה כוללת רק מי שכבר עלה לפחות פעם אחת, ולא עלה לפחות כ-3 חודשים (בקירוב: 13 שבתות/אירועים אחרונים).
+          </p>
+          <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+            <button class="btn btn-success" onclick="shareLongAbsentToWhatsApp()" style="background:#25d366;">📱 שתף רשימה בוואטסאפ</button>
+          </div>
+          <div class="member-list" id="longAbsentList"></div>
         </div>
       </section>
 
@@ -1537,6 +1551,7 @@
       entry: 'הזנת נתונים',
       insights: 'תובנות AI',
       recommendations: 'המלצות',
+      longabsent: 'לא עלו 3+ חודשים',
       members: 'מתפללים',
       trends: 'מגמות',
       history: 'היסטוריה'
@@ -1674,6 +1689,7 @@
       renderMemberList(stats.top.slice(0, 5), 'topMembersList', true);
       renderMemberList(stats.recs.slice(0, 5), 'urgentMembersList', false);
       renderMemberList(stats.recs, 'recList', false, true);
+      renderLongAbsentTab();
       renderMembersTab();
       // AI Insights
       renderAIInsights(stats);
@@ -2363,6 +2379,76 @@
            </div>
         </div>
       `}).join('');
+    }
+
+    function getLongAbsentMembers(minWeeks = 13) {
+      const data = loadData();
+      return Object.entries(data.members)
+        .map(([name, info]) => {
+          const idx = getHistoryIndexByLastAliyah(info.lastAliyah, data.history);
+          const eventsSinceLastAliyah = idx >= 0 ? idx : data.history.length;
+          return {
+            name,
+            aliyot: Number(info.aliyot) || 0,
+            lastAliyah: info.lastAliyah || '',
+            eventsSinceLastAliyah
+          };
+        })
+        .filter(member => member.aliyot >= 1 && member.eventsSinceLastAliyah >= minWeeks)
+        .sort((a, b) => b.eventsSinceLastAliyah - a.eventsSinceLastAliyah);
+    }
+
+    function renderLongAbsentTab() {
+      const listEl = document.getElementById('longAbsentList');
+      if (!listEl) return;
+
+      const members = getLongAbsentMembers(13);
+      if (!members.length) {
+        listEl.innerHTML = '<div style="padding:16px; text-align:center; color:#94a3b8;">אין כרגע מתפללים שלא עלו מעל 3 חודשים (מבין מי שכבר עלה פעם אחת).</div>';
+        return;
+      }
+
+      listEl.innerHTML = members.map(m => {
+        const esc = m.name.replace(/'/g, "\\'");
+        const oneAliyahBadge = m.aliyot === 1
+          ? '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">עלה פעם אחת בלבד</span>'
+          : '';
+        return `
+          <div class="member-item">
+            <div class="member-right">
+              <div class="badge-circle bg-red">${m.eventsSinceLastAliyah}</div>
+              <div class="member-name clickable-name" onclick="openProfile('${esc}')">${m.name}</div>
+              ${oneAliyahBadge}
+            </div>
+            <div class="member-left">
+              <span>לא עלה כבר ${m.eventsSinceLastAliyah} שבתות/אירועים</span>
+              <span>${m.lastAliyah ? 'אחרונה: ' + lastAliyahDisplay(m.lastAliyah) : 'אחרונה: לא ידוע'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function shareLongAbsentToWhatsApp() {
+      const members = getLongAbsentMembers(13);
+      if (!members.length) {
+        alert('אין כרגע רשימה לשיתוף.');
+        return;
+      }
+
+      const lines = members.map((m, idx) => {
+        const oneAliyahText = m.aliyot === 1 ? ' • עלה פעם אחת בלבד' : '';
+        const lastText = m.lastAliyah ? ` • אחרונה: ${lastAliyahDisplay(m.lastAliyah)}` : '';
+        return `${idx + 1}. ${m.name} — ${m.eventsSinceLastAliyah} שבתות/אירועים ללא עליה${oneAliyahText}${lastText}`;
+      });
+
+      const msg =
+        '⏳ מתפללים שלא עלו 3 חודשים ומעלה\n' +
+        '(מבוסס על לפחות 13 שבתות/אירועים, ורק מי שכבר עלה לפחות פעם אחת)\n\n' +
+        lines.join('\n');
+
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     }
 
     // =========================================
