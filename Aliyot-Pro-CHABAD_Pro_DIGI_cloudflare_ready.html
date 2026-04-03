@@ -572,6 +572,11 @@
         </div>
         <div style="width:1px; height:20px; background:#cbd5e1;" class="divider" aria-hidden="true"></div>
         <div class="zman-item">
+          <span class="icon" aria-hidden="true">🌾</span>
+          <span id="omerCount">טוען ספירת העומר...</span>
+        </div>
+        <div style="width:1px; height:20px; background:#cbd5e1;" class="divider" aria-hidden="true"></div>
+        <div class="zman-item">
           <span class="icon" aria-hidden="true">📜</span>
           <span id="parshaName" style="font-family: 'SBL Hebrew', 'David', serif; font-size:1.1em;">טוען פרשה...</span>
         </div>
@@ -1311,6 +1316,30 @@
         return date.toLocaleDateString('he-IL');
       }
     }
+
+    function getOmerDay(date) {
+      const fmt = (opts) => new Intl.DateTimeFormat('he-IL-u-ca-hebrew', opts).format(date);
+      const day = parseInt(fmt({ day: 'numeric' }), 10);
+      const rawMonth = String(fmt({ month: 'long' }) || '');
+      const month = rawMonth.replace(/^ב/, '').replace(/\s+/g, '');
+
+      if (month === 'ניסן' && day >= 16) return day - 15;
+      if (month === 'אייר') return 15 + day;
+      if ((month === 'סיוון' || month === 'סיון') && day <= 5) return 44 + day;
+      return null;
+    }
+
+    function updateOmerDisplay(date) {
+      const omerEl = document.getElementById('omerCount');
+      if (!omerEl) return;
+      try {
+        const day = getOmerDay(date || new Date());
+        omerEl.textContent = day ? `ספירת העומר: יום ${day}` : 'ספירת העומר: לא בתקופה';
+      } catch (e) {
+        omerEl.textContent = 'ספירת העומר: לא זמין';
+      }
+    }
+
     // חלוקת פרשות לפי ספרי תורה
     const TORAH_BOOKS = {
       'בראשית': ['בראשית', 'נח', 'לך לך', 'וירא', 'חיי שרה', 'תולדות', 'ויצא', 'וישלח', 'וישב', 'מקץ', 'ויגש', 'ויחי'],
@@ -4493,8 +4522,10 @@
 async function fetchZmanim() {
   try {
     document.getElementById('hebrewDate').textContent = toHebrewDate(new Date());
+    updateOmerDisplay(new Date());
   } catch(e) {
     document.getElementById('hebrewDate').textContent = new Date().toLocaleDateString('he-IL');
+    updateOmerDisplay(new Date());
   }
 
   try {
