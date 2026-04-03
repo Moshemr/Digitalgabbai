@@ -2473,13 +2473,20 @@
 
     function toggleLongAbsentGuest(memberName) {
       const marked = Boolean(getGuestMembersMap()[memberName]);
-      if (marked) {
-        setGuestMember(memberName, false);
-        alert(`"${memberName}" הוחזר לרשימת המתפללים הקבועים.`);
-      } else {
-        setGuestMember(memberName, true);
-        alert(`"${memberName}" סומן כמתפלל אורח, והוא יוחרג מספירות קבועות.`);
-      }
+      if (marked) unmarkLongAbsentGuest(memberName);
+      else markLongAbsentGuest(memberName);
+    }
+
+    function markLongAbsentGuest(memberName) {
+      setGuestMember(memberName, true);
+      alert(`"${memberName}" סומן כאורח בצורה בולטת, והוא יוחרג מספירות המתפללים הקבועים.`);
+      renderLongAbsentTab();
+      renderAll();
+    }
+
+    function unmarkLongAbsentGuest(memberName) {
+      setGuestMember(memberName, false);
+      alert(`"${memberName}" הוגדר כמתפלל קבוע. מהפעם הבאה הוא לא ייחשב יותר כאורח.`);
       renderLongAbsentTab();
       renderAll();
     }
@@ -2494,13 +2501,21 @@
         return;
       }
 
-      listEl.innerHTML = members.map(m => {
+      const legendHtml = `
+        <div style="padding:10px 12px; border:1px solid #fca5a5; background:#fef2f2; color:#7f1d1d; border-radius:10px; margin-bottom:10px; font-size:0.9rem; font-weight:600;">
+          סימון אורח בולט: מתפלל שסומן כאורח מוצג באדום ויוחרג מספירות קבועות.
+          <br />
+          אפשר תמיד לבטל סימון ולהחזיר למתפלל קבוע.
+        </div>
+      `;
+
+      listEl.innerHTML = legendHtml + members.map(m => {
         const esc = m.name.replace(/'/g, "\\'");
-        const guestBtn = m.isManuallyGuest
-          ? `<button class="btn btn-success" onclick="toggleLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="סמן כמתפלל קבוע" style="padding:6px 12px; font-size:0.82rem; background:#16a34a;">✅ מתפלל קבוע</button>`
-          : `<button class="btn-icon-small" onclick="toggleLongAbsentGuest('${esc}')" title="סמן כמתפלל אורח" aria-label="סמן כאורח">🤗</button>`;
+        const guestActions = m.isManuallyGuest
+          ? `<button class="btn btn-success" onclick="unmarkLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="החזר כמתפלל קבוע" style="padding:7px 12px; font-size:0.82rem; background:#16a34a;">✅ החזר כמתפלל קבוע</button>`
+          : `<button class="btn" onclick="markLongAbsentGuest('${esc}')" title="סמן מתפלל כאורח" aria-label="סמן מתפלל כאורח" style="padding:7px 12px; font-size:0.82rem; background:#dc2626; color:white; border:1px solid #b91c1c; font-weight:700;">🚩 סמן כאורח</button>`;
         const guestBadge = m.isManuallyGuest
-          ? '<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">מסומן כאורח</span>'
+          ? '<span style="background:#b91c1c; color:white; padding:4px 10px; border-radius:999px; font-size:0.8rem; font-weight:800;">אורח • מוחרג מקבועים</span>'
           : '';
         return `
           <div class="member-item" style="${m.isManuallyGuest ? 'opacity:0.95; border-color:#fecaca; background:#fff7ed;' : ''}">
@@ -2512,7 +2527,7 @@
             <div class="member-left">
               <span>לא עלה כבר ${m.eventsSinceLastAliyah} שבתות/אירועים</span>
               <span>${m.lastAliyah ? 'אחרונה: ' + lastAliyahDisplay(m.lastAliyah) : 'אחרונה: לא ידוע'}</span>
-              ${guestBtn}
+              ${guestActions}
             </div>
           </div>
         `;
