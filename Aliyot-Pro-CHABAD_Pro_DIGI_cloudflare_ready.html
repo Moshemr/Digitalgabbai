@@ -1439,38 +1439,62 @@
 
       return `${lastAliyah} <span style="color:${color}; font-size:0.8rem; font-weight:600;">(${timeStr})</span>`;
     }
+
+    function getGuestMembersMap() {
+      return JSON.parse(localStorage.getItem('gabbai_guest_members') || '{}');
+    }
+
+    function isGuestMember(memberName) {
+      const name = String(memberName || '').trim();
+      if (!name) return false;
+      const lower = name.toLowerCase();
+      if (lower === 'אורח' || lower.includes('אורח') || lower.includes('- אורח')) return true;
+      const guestMap = getGuestMembersMap();
+      return Boolean(guestMap[name]);
+    }
+
+    function setGuestMember(memberName, value) {
+      const name = String(memberName || '').trim();
+      if (!name) return;
+      const guestMap = getGuestMembersMap();
+      if (value) guestMap[name] = true;
+      else delete guestMap[name];
+      localStorage.setItem('gabbai_guest_members', JSON.stringify(guestMap));
+    }
+
+    // פונקציה לזיהוי כהנים/לויים/רבנים/אורחים
+    function isSpecialRole(memberName, dataRef = null) {
+      const name = String(memberName || '').trim().toLowerCase();
+      const data = dataRef || loadData();
+
+      // אורחים (כולל סימון ידני)
+      if (isGuestMember(memberName)) return true;
+
+      // כהנים - בהיסטוריה עם תגית (כהן) או בשם עצמו
+      const hasKohenTag = data.history.some(h =>
+        h.names.some(n => n.includes(memberName) && n.includes('(כהן)'))
+      );
+      const hasLeviTag = data.history.some(h =>
+        h.names.some(n => n.includes(memberName) && n.includes('(לוי)'))
+      );
+
+      const hasKohenInName = name.includes(' כהן') || name.endsWith('כהן') || name.includes('- כהן');
+      const hasLeviInName = name.includes('- לוי') || name.endsWith('- לוי');
+
+      const isRabbi = name.includes('הרב') || name.startsWith('רב ') ||
+                      name.includes('הכט') || name.includes('זאינאץ');
+
+      return hasKohenTag || hasLeviTag || hasKohenInName || hasLeviInName || isRabbi;
+    }
+
     function getStats() {
       const data = loadData();
       const allMembers = Object.entries(data.members).map(([name, info]) => ({name, ...info}));
 
-      // פונקציה לזיהוי כהנים/לויים/רבנים/אורחים
-      function isSpecialRole(memberName) {
-        const name = memberName.trim().toLowerCase();
-
-        // אורחים
-        if (name === 'אורח' || name.includes('אורח') || name.includes('- אורח')) return true;
-
-        // כהנים - בהיסטוריה עם תגית (כהן) או בשם עצמו
-        const hasKohenTag = data.history.some(h =>
-          h.names.some(n => n.includes(memberName) && n.includes('(כהן)'))
-        );
-        const hasLeviTag = data.history.some(h =>
-          h.names.some(n => n.includes(memberName) && n.includes('(לוי)'))
-        );
-
-        const hasKohenInName = name.includes(' כהן') || name.endsWith('כהן') || name.includes('- כהן');
-        const hasLeviInName = name.includes('- לוי') || name.endsWith('- לוי');
-
-        const isRabbi = name.includes('הרב') || name.startsWith('רב ') ||
-                        name.includes('הכט') || name.includes('זאינאץ');
-
-        return hasKohenTag || hasLeviTag || hasKohenInName || hasLeviInName || isRabbi;
-      }
-
       // סנן רק ישראלים רגילים לניתוח + רק פעילים
       const attendance = JSON.parse(localStorage.getItem('gabbai_attendance') || '{}');
       const arr = allMembers.filter(m => {
-        if (isSpecialRole(m.name)) return false;
+        if (isSpecialRole(m.name, data)) return false;
         const att = attendance[m.name] || 'active';
         return att !== 'inactive';
       });
@@ -1512,7 +1536,7 @@
       const insights = [];
 
       const filteredCount = allMembers.length - arr.length;
-      const inactiveCount = allMembers.filter(m => !isSpecialRole(m.name) && (attendance[m.name] || 'active') === 'inactive').length;
+      const inactiveCount = allMembers.filter(m => !isSpecialRole(m.name, data) && (attendance[m.name] || 'active') === 'inactive').length;
       if (filteredCount > 0) {
         let msg = `ℹ️ <strong>הערה:</strong> ${filteredCount} מתפללים סוננו מהניתוח`;
         const parts = [];
@@ -2346,6 +2370,7 @@
 
       function getSpecialRole(memberName) {
         const name = memberName.trim().toLowerCase();
+        if (isGuestMember(memberName)) return 'אורח';
         const hasKohenTag = data.history.some(h =>
           h.names.some(n => n.includes(memberName) && n.includes('(כהן)'))
         );
@@ -2438,7 +2463,20 @@
           };
         })
         .filter(member => member.aliyot >= 1 && member.eventsSinceLastAliyah >= minWeeks)
+        .filter(member => !isGuestMember(member.name))
         .sort((a, b) => b.eventsSinceLastAliyah - a.eventsSinceLastAliyah);
+    }
+
+    function toggleLongAbsentGuest(memberName) {
+      const marked = getGuestMembersMap()[memberName];
+      if (marked) {
+        setGuestMember(memberName, false);
+        alert(`הוסר סימון אורח עבור "${memberName}".`);
+      } else {
+        setGuestMember(memberName, true);
+        alert(`"${memberName}" סומן כמתפלל אורח, והוא יוחרג מספירות קבועות.`);
+      }
+      renderAll();
     }
 
     function renderLongAbsentTab() {
@@ -2453,6 +2491,7 @@
 
       listEl.innerHTML = members.map(m => {
         const esc = m.name.replace(/'/g, "\\'");
+        const guestBtn = `<button class="btn-icon-small" onclick="toggleLongAbsentGuest('${esc}')" title="סמן כמתפלל אורח" aria-label="סמן כאורח">🤗</button>`;
         const oneAliyahBadge = m.aliyot === 1
           ? '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">עלה פעם אחת בלבד</span>'
           : '';
@@ -2466,6 +2505,7 @@
             <div class="member-left">
               <span>לא עלה כבר ${m.eventsSinceLastAliyah} שבתות/אירועים</span>
               <span>${m.lastAliyah ? 'אחרונה: ' + lastAliyahDisplay(m.lastAliyah) : 'אחרונה: לא ידוע'}</span>
+              ${guestBtn}
             </div>
           </div>
         `;
@@ -4410,6 +4450,7 @@
         data.attendance = JSON.parse(localStorage.getItem('gabbai_attendance') || '{}');
         data.notes = JSON.parse(localStorage.getItem('gabbai_notes') || '{}');
         data.tags = JSON.parse(localStorage.getItem('gabbai_tags') || '{}');
+        data.guestMembers = JSON.parse(localStorage.getItem('gabbai_guest_members') || '{}');
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], {type: "application/json"});
         const url = URL.createObjectURL(blob);
@@ -4449,6 +4490,10 @@
                     if (data.tags) {
                       localStorage.setItem('gabbai_tags', JSON.stringify(data.tags));
                       delete data.tags;
+                    }
+                    if (data.guestMembers) {
+                      localStorage.setItem('gabbai_guest_members', JSON.stringify(data.guestMembers));
+                      delete data.guestMembers;
                     }
                     // סנכרן ספירות עליות מההיסטוריה
                     const actualCounts = {};
@@ -4694,6 +4739,7 @@ async function fetchZmanim() {
         data.attendance = JSON.parse(localStorage.getItem('gabbai_attendance') || '{}');
         data.notes = JSON.parse(localStorage.getItem('gabbai_notes') || '{}');
         data.tags = JSON.parse(localStorage.getItem('gabbai_tags') || '{}');
+        data.guestMembers = JSON.parse(localStorage.getItem('gabbai_guest_members') || '{}');
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
