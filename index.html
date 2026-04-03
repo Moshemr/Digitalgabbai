@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta id="appViewport" name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>הגבאי הדיגיטלי</title>
   <style>
     html,body{margin:0;padding:0;height:100%;background:#f8fafc}
@@ -19,7 +19,22 @@
       const REMOTE_ENDPOINT = '/api/state';
       const SITE_ID = 'chabad-main';
       const SYNC_KEYS = ['gabbai_db_v7_final','gabbai_attendance','gabbai_notes','gabbai_tags'];
+      const DIRECT_TABS = new Set(['dashboard', 'entry', 'insights', 'recommendations', 'members', 'trends', 'history']);
       let lastSnapshot = '';
+      let hashListenerBound = false;
+
+      function configureViewportForDevice() {
+        const viewportMeta = document.getElementById('appViewport');
+        if (!viewportMeta) return;
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+          || window.matchMedia('(max-width: 900px)').matches;
+        viewportMeta.setAttribute(
+          'content',
+          isMobile
+            ? 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+            : 'width=device-width, initial-scale=1.0'
+        );
+      }
 
       function snapshotStore() {
         const localStore = {};
@@ -74,10 +89,59 @@
         }
       }
 
+      function applyTrendsHotfix(frameWindow) {
+        if (!frameWindow) return;
+        if (typeof frameWindow.isSpecialRole === 'function') return;
+
+        frameWindow.isSpecialRole = function isSpecialRole(memberName) {
+          if (!memberName || typeof memberName !== 'string') return false;
+
+          const name = memberName.trim().toLowerCase();
+          if (name === 'אורח' || name.includes('אורח') || name.includes('- אורח')) return true;
+
+          let history = [];
+          try {
+            history = (typeof frameWindow.loadData === 'function' && frameWindow.loadData().history) || [];
+          } catch (_) {}
+
+          const hasKohenTag = history.some((h) =>
+            (h.names || []).some((n) => n.includes(memberName) && n.includes('(כהן)'))
+          );
+          const hasLeviTag = history.some((h) =>
+            (h.names || []).some((n) => n.includes(memberName) && n.includes('(לוי)'))
+          );
+
+          const hasKohenInName = name.includes(' כהן') || name.endsWith('כהן') || name.includes('- כהן');
+          const hasLeviInName = name.includes('- לוי') || name.endsWith('- לוי');
+          const isRabbi = name.includes('הרב') || name.startsWith('רב ') || name.includes('הכט') || name.includes('זאינאץ');
+
+          return hasKohenTag || hasLeviTag || hasKohenInName || hasLeviInName || isRabbi;
+        };
+      }
+
+      function openTabFromHash(frameWindow) {
+        if (!frameWindow || typeof frameWindow.switchTab !== 'function') return;
+        const hash = window.location.hash.replace(/^#/, '').trim().toLowerCase();
+        if (!DIRECT_TABS.has(hash)) return;
+        frameWindow.switchTab(hash);
+      }
+
+      configureViewportForDevice();
+      window.addEventListener('resize', configureViewportForDevice);
+
       await pullRemoteStore();
       document.getElementById('appFrame').src = APP_HTML;
       document.getElementById('appFrame').addEventListener('load', function(){
         document.getElementById('loading').style.display = 'none';
+        const frameWindow = document.getElementById('appFrame').contentWindow;
+        applyTrendsHotfix(frameWindow);
+        openTabFromHash(frameWindow);
+        if (!hashListenerBound) {
+          window.addEventListener('hashchange', function () {
+            openTabFromHash(document.getElementById('appFrame').contentWindow);
+          });
+          hashListenerBound = true;
+        }
       });
       setInterval(pushRemoteStore, 2000);
       window.addEventListener('beforeunload', pushRemoteStore);

@@ -109,6 +109,20 @@
       color: white;
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
+    .tab-share-btn {
+      margin-right: 8px;
+      background: #eef2ff;
+      color: var(--primary);
+      border: 1px solid #c7d2fe;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-share-btn:hover { background: #dbeafe; border-color: #93c5fd; }
     /* Main Content Area */
     .tab-panel { display: none; animation: fadeIn 0.3s ease-out; }
     .tab-panel.active { display: block; }
@@ -318,14 +332,78 @@
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; }
     .hidden { display: none; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-    /* Mobile */
-    @media (max-width: 600px) {
-      .zmanim-bar { flex-direction: column; width: 100%; gap: 10px; }
-      .tabs { overflow-x: auto; flex-wrap: nowrap; justify-content: flex-start; padding-bottom: 5px; }
-      .grid-2 { grid-template-columns: 1fr; }
+    /* Tablet + Mobile */
+    @media (max-width: 900px) {
+      body { padding: 12px; }
+      .container { max-width: 100%; }
+      header { padding: 16px; margin-bottom: 14px; }
+      .brand-title { font-size: 1.6rem; line-height: 1.2; }
+      .brand-subtitle { font-size: 0.95rem; }
+      .zmanim-bar { gap: 10px; padding: 10px 12px; border-radius: 14px; width: 100%; }
+      .card { padding: 14px; margin-bottom: 12px; border-radius: 14px; }
+      h2 { font-size: 1.15rem; gap: 6px; margin-bottom: 10px; }
+      .grid-2 { grid-template-columns: 1fr; gap: 12px; }
       .book-stats { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .stat-box { padding: 10px 8px; border-radius: 12px; }
+      .stat-number { font-size: 1.45rem; }
+      .stat-label { font-size: 0.75rem; }
+      .balance-bar { font-size: 0.95rem; min-height: 36px; height: auto; padding: 8px; }
       .profile-body { flex-direction: column; }
       .profile-sidebar { min-width: 100%; }
+      .chart-container { height: 170px; }
+    }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      .tabs {
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 6px;
+        padding-bottom: 8px;
+        margin-top: 14px;
+        scrollbar-width: thin;
+      }
+      .tab-btn {
+        white-space: nowrap;
+        min-height: 42px;
+        padding: 9px 14px;
+        font-size: 0.92rem;
+        flex: 0 0 auto;
+      }
+      .tab-share-btn {
+        width: 100%;
+        margin: 0 0 10px 0;
+        min-height: 40px;
+        font-size: 0.9rem;
+      }
+      .member-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 12px;
+      }
+      .member-right, .member-left { width: 100%; justify-content: space-between; gap: 8px; }
+      .member-name { font-size: 0.98rem; }
+      .distribution-row { gap: 8px; }
+      .dist-item { min-width: calc(50% - 4px); padding: 8px 9px; }
+      .insights-card { padding: 12px; }
+      .insight-item { font-size: 0.88rem; padding: 10px; }
+      .aliyah-row { flex-wrap: wrap; gap: 8px; }
+      .aliyah-row input[name="aliyahNote"] { flex: 1 1 100%; max-width: 100%; }
+      .filter-inline .form-control { width: 100%; }
+      .shabbat-slot { flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+      .slot-label { min-width: 0; }
+      .slot-name { margin: 0; width: 100%; }
+      .slot-actions { width: 100%; justify-content: flex-end; }
+      .btn { min-height: 42px; padding: 10px 12px; font-size: 0.95rem; width: 100%; }
+      .chart-container { height: 150px; }
+      .profile-overlay { padding: 8px; }
+      .profile-card { max-height: 92vh; border-radius: 14px; }
+      .profile-header { padding: 16px; border-radius: 14px 14px 0 0; }
+      .profile-name { font-size: 1.2rem; }
     }
 
     /* =========================================
@@ -1454,6 +1532,76 @@
     // =========================================
     // 3. UI RENDERING
     // =========================================
+    const TAB_LABELS = {
+      dashboard: 'דשבורד',
+      entry: 'הזנת נתונים',
+      insights: 'תובנות AI',
+      recommendations: 'המלצות',
+      members: 'מתפללים',
+      trends: 'מגמות',
+      history: 'היסטוריה'
+    };
+
+    function getActiveTabId() {
+      return document.querySelector('.tab-panel.active')?.id || 'dashboard';
+    }
+
+    function getShareBaseUrl() {
+      try {
+        const topUrl = new URL(window.top.location.href);
+        topUrl.hash = '';
+        topUrl.search = '';
+        return topUrl.toString();
+      } catch (_) {
+        const current = new URL(window.location.href);
+        current.hash = '';
+        current.search = '';
+        return current.toString();
+      }
+    }
+
+    function getTabShareUrl(tabId) {
+      return `${getShareBaseUrl()}#${tabId}`;
+    }
+
+    async function shareTab(tabId) {
+      const id = tabId || getActiveTabId();
+      const title = TAB_LABELS[id] || 'עמוד';
+      const shareUrl = getTabShareUrl(id);
+      const payload = {
+        title: `הגבאי הדיגיטלי - ${title}`,
+        text: `קישור ישיר לעמוד ${title}`,
+        url: shareUrl
+      };
+      try {
+        if (navigator.share) {
+          await navigator.share(payload);
+          return;
+        }
+      } catch (_) {}
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert(`✅ הקישור לעמוד "${title}" הועתק:\n${shareUrl}`);
+      } catch (_) {
+        prompt('העתק את הקישור:', shareUrl);
+      }
+    }
+
+    function setupTabShareButtons() {
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        if (panel.querySelector('.tab-share-btn')) return;
+        const firstHeader = panel.querySelector('h2');
+        if (!firstHeader) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tab-share-btn';
+        btn.textContent = '🔗 שתף עמוד';
+        btn.setAttribute('aria-label', `שתף קישור לעמוד ${TAB_LABELS[panel.id] || panel.id}`);
+        btn.addEventListener('click', () => shareTab(panel.id));
+        firstHeader.insertAdjacentElement('afterend', btn);
+      });
+    }
+
     function switchTab(id) {
       document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
       document.getElementById(id).classList.add('active');
@@ -1466,6 +1614,16 @@
             btn.setAttribute('tabindex', 0);
           }
       });
+      if (window.location.hash !== `#${id}`) history.replaceState(null, '', `#${id}`);
+      try {
+        if (window.top && window.top !== window) {
+          const topUrl = new URL(window.top.location.href);
+          if (topUrl.hash !== `#${id}`) {
+            topUrl.hash = id;
+            window.top.history.replaceState(null, '', topUrl.toString());
+          }
+        }
+      } catch (_) {}
       renderUI();
     }
     function renderUI() {
@@ -4351,6 +4509,7 @@ async function fetchZmanim() {
       fetchZmanim();
       addInputRow(); addInputRow(); addInputRow();
       onEventTypeChange(false);
+      setupTabShareButtons();
       renderUI();
 
       const lastBackupCheck = localStorage.getItem('lastBackupCheck');
