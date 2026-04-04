@@ -798,7 +798,7 @@
         <div class="card">
           <h2>⏳ מתפללים שלא עלו 3 חודשים ומעלה</h2>
           <p style="color: var(--text-muted); margin-bottom: 12px;">
-            הרשימה כוללת רק מי שכבר עלה לפחות פעם אחת, ולא עלה לפחות כ-3 חודשים (בקירוב: 13 שבתות/אירועים אחרונים).
+            הרשימה כוללת רק מי שכבר עלו לפחות פעמיים, ולא עלו לפחות כ-3 חודשים (בקירוב: 13 שבתות/אירועים אחרונים).
           </p>
           <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
             <button class="btn btn-success" onclick="shareLongAbsentToWhatsApp()" style="background:#25d366;">📱 שתף רשימה בוואטסאפ</button>
@@ -2451,6 +2451,7 @@
 
     function getLongAbsentMembers(minWeeks = 13) {
       const data = loadData();
+      const guestMap = getGuestMembersMap();
       return Object.entries(data.members)
         .map(([name, info]) => {
           const idx = getHistoryIndexByLastAliyah(info.lastAliyah, data.history);
@@ -2459,12 +2460,28 @@
             name,
             aliyot: Number(info.aliyot) || 0,
             lastAliyah: info.lastAliyah || '',
-            eventsSinceLastAliyah
+            eventsSinceLastAliyah,
+            isManuallyGuest: Boolean(guestMap[name])
           };
         })
-        .filter(member => member.aliyot >= 1 && member.eventsSinceLastAliyah >= minWeeks)
-        .filter(member => !isGuestMember(member.name))
-        .sort((a, b) => b.eventsSinceLastAliyah - a.eventsSinceLastAliyah);
+        .filter(member => member.aliyot > 1 && member.eventsSinceLastAliyah >= minWeeks)
+        .sort((a, b) => {
+          if (a.isManuallyGuest !== b.isManuallyGuest) return a.isManuallyGuest ? 1 : -1;
+          return b.eventsSinceLastAliyah - a.eventsSinceLastAliyah;
+        });
+    }
+
+    function toggleLongAbsentGuest(memberName) {
+      const marked = Boolean(getGuestMembersMap()[memberName]);
+      if (marked) {
+        setGuestMember(memberName, false);
+        alert(`"${memberName}" הוחזר לרשימת המתפללים הקבועים.`);
+      } else {
+        setGuestMember(memberName, true);
+        alert(`"${memberName}" סומן כמתפלל אורח, והוא יוחרג מספירות קבועות.`);
+      }
+      renderLongAbsentTab();
+      renderAll();
     }
 
     function toggleLongAbsentGuest(memberName) {
@@ -2501,22 +2518,24 @@
 
       const members = getLongAbsentMembers(13);
       if (!members.length) {
-        listEl.innerHTML = manualGuestsPanel + '<div style="padding:16px; text-align:center; color:#94a3b8;">אין כרגע מתפללים שלא עלו מעל 3 חודשים (מבין מי שכבר עלה פעם אחת).</div>';
+        listEl.innerHTML = '<div style="padding:16px; text-align:center; color:#94a3b8;">אין כרגע מתפללים שלא עלו מעל 3 חודשים (מבין מי שעלו לפחות פעמיים).</div>';
         return;
       }
 
       listEl.innerHTML = members.map(m => {
         const esc = m.name.replace(/'/g, "\\'");
-        const guestBtn = `<button class="btn-icon-small" style="padding:6px 10px; font-weight:700; background:#ffedd5; color:#9a3412; border:1px solid #fb923c;" onclick="toggleLongAbsentGuest('${esc}')" title="סמן כמתפלל אורח" aria-label="סמן כמתפלל אורח">🔁 סמן כאורח</button>`;
-        const oneAliyahBadge = m.aliyot === 1
-          ? '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">עלה פעם אחת בלבד</span>'
+        const guestBtn = m.isManuallyGuest
+          ? `<button class="btn btn-success" onclick="toggleLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="סמן כמתפלל קבוע" style="padding:6px 12px; font-size:0.82rem; background:#16a34a;">✅ מתפלל קבוע</button>`
+          : `<button class="btn-icon-small" onclick="toggleLongAbsentGuest('${esc}')" title="סמן כמתפלל אורח" aria-label="סמן כאורח">🤗</button>`;
+        const guestBadge = m.isManuallyGuest
+          ? '<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">מסומן כאורח</span>'
           : '';
         return `
-          <div class="member-item">
+          <div class="member-item" style="${m.isManuallyGuest ? 'opacity:0.95; border-color:#fecaca; background:#fff7ed;' : ''}">
             <div class="member-right">
               <div class="badge-circle bg-red">${m.eventsSinceLastAliyah}</div>
               <div class="member-name clickable-name" onclick="openProfile('${esc}')">${m.name}</div>
-              ${oneAliyahBadge}
+              ${guestBadge}
             </div>
             <div class="member-left">
               <span>לא עלה כבר ${m.eventsSinceLastAliyah} שבתות/אירועים</span>
@@ -2538,14 +2557,13 @@
       }
 
       const lines = members.map((m, idx) => {
-        const oneAliyahText = m.aliyot === 1 ? ' • עלה פעם אחת בלבד' : '';
         const lastText = m.lastAliyah ? ` • אחרונה: ${lastAliyahDisplay(m.lastAliyah, true)}` : '';
-        return `${idx + 1}. ${m.name} — ${m.eventsSinceLastAliyah} שבתות/אירועים ללא עליה${oneAliyahText}${lastText}`;
+        return `${idx + 1}. ${m.name} — ${m.eventsSinceLastAliyah} שבתות/אירועים ללא עליה${lastText}`;
       });
 
       const msg =
         '⏳ מתפללים שלא עלו 3 חודשים ומעלה\n' +
-        '(מבוסס על לפחות 13 שבתות/אירועים, ורק מי שכבר עלה לפחות פעם אחת)\n\n' +
+        '(מבוסס על לפחות 13 שבתות/אירועים, ורק מי שכבר עלו לפחות פעמיים)\n\n' +
         lines.join('\n');
 
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
