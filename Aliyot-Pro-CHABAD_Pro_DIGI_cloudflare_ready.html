@@ -2484,9 +2484,37 @@
       renderAll();
     }
 
+    function toggleLongAbsentGuest(memberName) {
+      const marked = getGuestMembersMap()[memberName];
+      if (marked) {
+        setGuestMember(memberName, false);
+        alert(`בוטל סימון "מתפלל אורח" עבור "${memberName}". הוא חזר למתפלל רגיל.`);
+      } else {
+        setGuestMember(memberName, true);
+        alert(`"${memberName}" סומן כ"מתפלל אורח" ויוחרג מהספירות. אפשר לבטל בכל רגע מרשימת האורחים המסומנים.`);
+      }
+      renderAll();
+    }
+
     function renderLongAbsentTab() {
       const listEl = document.getElementById('longAbsentList');
       if (!listEl) return;
+
+      const data = loadData();
+      const manualGuestNames = Object.keys(getGuestMembersMap())
+        .filter(name => data.members[name])
+        .sort((a, b) => a.localeCompare(b, 'he'));
+      const manualGuestsPanel = manualGuestNames.length
+        ? `<div style="padding:12px; margin-bottom:12px; border:2px solid #fbbf24; border-radius:12px; background:#fffbeb;">
+            <div style="font-weight:800; color:#92400e; margin-bottom:8px;">🟡 מסומנים כעת כ״מתפלל אורח״ (לחיצה מבטלת)</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              ${manualGuestNames.map(name => {
+                const esc = name.replace(/'/g, "\\'");
+                return `<button class="btn-icon-small" style="padding:6px 10px; border-radius:999px; background:#fff; border:1px solid #f59e0b; color:#92400e; font-weight:700;" onclick="toggleLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="בטל סימון אורח">${name} ✖</button>`;
+              }).join('')}
+            </div>
+          </div>`
+        : '';
 
       const members = getLongAbsentMembers(13);
       if (!members.length) {
@@ -2517,6 +2545,8 @@
           </div>
         `;
       }).join('');
+
+      listEl.innerHTML = manualGuestsPanel + listEl.innerHTML;
     }
 
     function shareLongAbsentToWhatsApp() {
