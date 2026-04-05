@@ -803,6 +803,10 @@
           <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
             <button class="btn btn-success" onclick="shareLongAbsentToWhatsApp()" style="background:#25d366;">📱 שתף רשימה בוואטסאפ</button>
           </div>
+          <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+            <input type="text" id="longAbsentSearch" placeholder="🔍 חיפוש מתפלל..." class="form-control"
+                   style="flex:1; min-width:220px;" oninput="renderLongAbsentTab()">
+          </div>
           <div class="member-list" id="longAbsentList"></div>
         </div>
       </section>
@@ -1462,6 +1466,26 @@
       localStorage.setItem('gabbai_guest_members', JSON.stringify(guestMap));
     }
 
+    function getFixedMembersMap() {
+      return JSON.parse(localStorage.getItem('gabbai_fixed_members') || '{}');
+    }
+
+    function isFixedMember(memberName) {
+      const name = String(memberName || '').trim();
+      if (!name) return false;
+      const fixedMap = getFixedMembersMap();
+      return Boolean(fixedMap[name]);
+    }
+
+    function setFixedMember(memberName, value) {
+      const name = String(memberName || '').trim();
+      if (!name) return;
+      const fixedMap = getFixedMembersMap();
+      if (value) fixedMap[name] = true;
+      else delete fixedMap[name];
+      localStorage.setItem('gabbai_fixed_members', JSON.stringify(fixedMap));
+    }
+
     // פונקציה לזיהוי כהנים/לויים/רבנים/אורחים
     function isSpecialRole(memberName, dataRef = null) {
       const name = String(memberName || '').trim().toLowerCase();
@@ -1500,6 +1524,9 @@
       });
       const sorted = [...arr].sort((a,b) => b.aliyot - a.aliyot);
       const recs = [...arr].sort((a,b) => {
+        const fixedA = isFixedMember(a.name) ? 1 : 0;
+        const fixedB = isFixedMember(b.name) ? 1 : 0;
+        if (fixedA !== fixedB) return fixedB - fixedA;
         // Primary: longest time since last aliyah first
         const idxA = getHistoryIndexByLastAliyah(a.lastAliyah, data.history);
         const idxB = getHistoryIndexByLastAliyah(b.lastAliyah, data.history);
@@ -2452,6 +2479,7 @@
     function getLongAbsentMembers(minWeeks = 13) {
       const data = loadData();
       const guestMap = getGuestMembersMap();
+      const fixedMap = getFixedMembersMap();
       return Object.entries(data.members)
         .map(([name, info]) => {
           const idx = getHistoryIndexByLastAliyah(info.lastAliyah, data.history);
@@ -2461,14 +2489,12 @@
             aliyot: Number(info.aliyot) || 0,
             lastAliyah: info.lastAliyah || '',
             eventsSinceLastAliyah,
-            isManuallyGuest: Boolean(guestMap[name])
+            isManuallyGuest: Boolean(guestMap[name]),
+            isFixedMember: Boolean(fixedMap[name])
           };
         })
         .filter(member => member.eventsSinceLastAliyah >= minWeeks)
-        .sort((a, b) => {
-          if (a.isManuallyGuest !== b.isManuallyGuest) return a.isManuallyGuest ? 1 : -1;
-          return b.eventsSinceLastAliyah - a.eventsSinceLastAliyah;
-        });
+        .sort((a, b) => a.name.localeCompare(b.name, 'he'));
     }
 
     function toggleLongAbsentGuest(memberName) {
@@ -2503,6 +2529,18 @@
       renderAll();
     }
 
+    function markLongAbsentFixed(memberName) {
+      setFixedMember(memberName, true);
+      alert(`"${memberName}" הוגדר כמתפלל קבוע בעדיפות. הוא יקבל קדימות בהמלצות ובשיבוץ.`);
+      renderAll();
+    }
+
+    function unmarkLongAbsentFixed(memberName) {
+      setFixedMember(memberName, false);
+      alert(`בוטלה העדיפות של "${memberName}" כמתפלל קבוע.`);
+      renderAll();
+    }
+
     function renderLongAbsentTab() {
       const listEl = document.getElementById('longAbsentList');
       if (!listEl) return;
@@ -2524,7 +2562,11 @@
         : '';
 
       const members = getLongAbsentMembers(13);
-      if (!members.length) {
+      const search = (document.getElementById('longAbsentSearch')?.value || '').trim();
+      const filteredMembers = search
+        ? members.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
+        : members;
+      if (!filteredMembers.length) {
         listEl.innerHTML = '<div style="padding:16px; text-align:center; color:#94a3b8;">אין כרגע מתפללים שלא עלו מעל 3 חודשים.</div>';
         return;
       }
@@ -2537,13 +2579,19 @@
         </div>
       `;
 
-      listEl.innerHTML = legendHtml + members.map(m => {
+      listEl.innerHTML = legendHtml + filteredMembers.map(m => {
         const esc = m.name.replace(/'/g, "\\'");
         const guestActions = m.isManuallyGuest
           ? `<button class="btn btn-success" onclick="unmarkLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="החזר כמתפלל קבוע" style="padding:7px 12px; font-size:0.82rem; background:#16a34a;">✅ החזר כמתפלל קבוע</button>`
           : `<button class="btn" onclick="markLongAbsentGuest('${esc}')" title="סמן מתפלל כאורח" aria-label="סמן מתפלל כאורח" style="padding:7px 12px; font-size:0.82rem; background:#dc2626; color:white; border:1px solid #b91c1c; font-weight:700;">🚩 סמן כאורח</button>`;
+        const fixedActions = m.isFixedMember
+          ? `<button class="btn btn-secondary" onclick="unmarkLongAbsentFixed('${esc}')" title="בטל עדיפות מתפלל קבוע" aria-label="בטל עדיפות מתפלל קבוע" style="padding:7px 12px; font-size:0.82rem; background:#334155; color:white;">⭐ בטל עדיפות קבוע</button>`
+          : `<button class="btn btn-secondary" onclick="markLongAbsentFixed('${esc}')" title="הגדר כמתפלל קבוע בעדיפות" aria-label="הגדר כמתפלל קבוע בעדיפות" style="padding:7px 12px; font-size:0.82rem; background:#1d4ed8; color:white;">⭐ סמן כמתפלל קבוע</button>`;
         const guestBadge = m.isManuallyGuest
           ? '<span style="background:#b91c1c; color:white; padding:4px 10px; border-radius:999px; font-size:0.8rem; font-weight:800;">אורח • מוחרג מקבועים</span>'
+          : '';
+        const fixedBadge = m.isFixedMember
+          ? '<span style="background:#1d4ed8; color:white; padding:4px 10px; border-radius:999px; font-size:0.8rem; font-weight:800;">מתפלל קבוע • עדיפות עליה</span>'
           : '';
         return `
           <div class="member-item" style="${m.isManuallyGuest ? 'opacity:0.95; border-color:#fecaca; background:#fff7ed;' : ''}">
@@ -2551,10 +2599,12 @@
               <div class="badge-circle bg-red">${m.eventsSinceLastAliyah}</div>
               <div class="member-name clickable-name" onclick="openProfile('${esc}')">${m.name}</div>
               ${guestBadge}
+              ${fixedBadge}
             </div>
             <div class="member-left">
               <span>לא עלה כבר ${m.eventsSinceLastAliyah} שבתות/אירועים</span>
               <span>${m.lastAliyah ? 'אחרונה: ' + lastAliyahDisplay(m.lastAliyah) : 'אחרונה: לא ידוע'}</span>
+              ${fixedActions}
               ${guestActions}
             </div>
           </div>
@@ -4502,6 +4552,7 @@
         data.notes = JSON.parse(localStorage.getItem('gabbai_notes') || '{}');
         data.tags = JSON.parse(localStorage.getItem('gabbai_tags') || '{}');
         data.guestMembers = JSON.parse(localStorage.getItem('gabbai_guest_members') || '{}');
+        data.fixedMembers = JSON.parse(localStorage.getItem('gabbai_fixed_members') || '{}');
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], {type: "application/json"});
         const url = URL.createObjectURL(blob);
@@ -4545,6 +4596,10 @@
                     if (data.guestMembers) {
                       localStorage.setItem('gabbai_guest_members', JSON.stringify(data.guestMembers));
                       delete data.guestMembers;
+                    }
+                    if (data.fixedMembers) {
+                      localStorage.setItem('gabbai_fixed_members', JSON.stringify(data.fixedMembers));
+                      delete data.fixedMembers;
                     }
                     // סנכרן ספירות עליות מההיסטוריה
                     const actualCounts = {};
@@ -4791,6 +4846,7 @@ async function fetchZmanim() {
         data.notes = JSON.parse(localStorage.getItem('gabbai_notes') || '{}');
         data.tags = JSON.parse(localStorage.getItem('gabbai_tags') || '{}');
         data.guestMembers = JSON.parse(localStorage.getItem('gabbai_guest_members') || '{}');
+        data.fixedMembers = JSON.parse(localStorage.getItem('gabbai_fixed_members') || '{}');
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
