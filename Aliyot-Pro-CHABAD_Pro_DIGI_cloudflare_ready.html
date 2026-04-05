@@ -2541,6 +2541,13 @@
       renderAll();
     }
 
+    function convertLongAbsentFixedToGuest(memberName) {
+      setFixedMember(memberName, false);
+      setGuestMember(memberName, true);
+      alert(`"${memberName}" הוחזר להגדרת אורח. אפשר להגדיר שוב כמתפלל קבוע בכל רגע.`);
+      renderAll();
+    }
+
     function renderLongAbsentTab() {
       const listEl = document.getElementById('longAbsentList');
       if (!listEl) return;
@@ -2593,6 +2600,13 @@
         const fixedBadge = m.isFixedMember
           ? '<span style="background:#1d4ed8; color:white; padding:4px 10px; border-radius:999px; font-size:0.8rem; font-weight:800;">מתפלל קבוע • עדיפות עליה</span>'
           : '';
+        const fixedStateFeedback = m.isFixedMember
+          ? '<span style="display:inline-block; padding:6px 10px; border-radius:8px; background:#dbeafe; color:#1e3a8a; font-size:0.82rem; font-weight:700;">✅ המשתמש הוגדר כמתפלל קבוע</span>'
+          : '';
+        const revertToGuestAction = m.isFixedMember
+          ? `<button class="btn" onclick="convertLongAbsentFixedToGuest('${esc}')" title="החזר להגדרת אורח" aria-label="החזר להגדרת אורח" style="padding:7px 12px; font-size:0.82rem; background:#dc2626; color:white; border:1px solid #b91c1c; font-weight:700;">↩️ החזר לאורח</button>`
+          : '';
+        const actionsHtml = m.isFixedMember ? `${fixedStateFeedback}${revertToGuestAction}` : `${fixedActions}${guestActions}`;
         return `
           <div class="member-item" style="${m.isManuallyGuest ? 'opacity:0.95; border-color:#fecaca; background:#fff7ed;' : ''}">
             <div class="member-right">
@@ -2604,8 +2618,7 @@
             <div class="member-left">
               <span>לא עלה כבר ${m.eventsSinceLastAliyah} שבתות/אירועים</span>
               <span>${m.lastAliyah ? 'אחרונה: ' + lastAliyahDisplay(m.lastAliyah) : 'אחרונה: לא ידוע'}</span>
-              ${fixedActions}
-              ${guestActions}
+              ${actionsHtml}
             </div>
           </div>
         `;
