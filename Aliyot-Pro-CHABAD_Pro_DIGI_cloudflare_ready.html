@@ -798,7 +798,7 @@
         <div class="card">
           <h2>⏳ מתפללים שלא עלו 3 חודשים ומעלה</h2>
           <p style="color: var(--text-muted); margin-bottom: 12px;">
-            הרשימה כוללת רק מי שכבר עלו לפחות פעמיים, ולא עלו לפחות כ-3 חודשים (בקירוב: 13 שבתות/אירועים אחרונים).
+            הרשימה כוללת את כל מי שלא עלו לפחות כ-3 חודשים (בקירוב: 13 שבתות/אירועים אחרונים), ללא קשר לכמות העליות.
           </p>
           <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
             <button class="btn btn-success" onclick="shareLongAbsentToWhatsApp()" style="background:#25d366;">📱 שתף רשימה בוואטסאפ</button>
@@ -2464,7 +2464,7 @@
             isManuallyGuest: Boolean(guestMap[name])
           };
         })
-        .filter(member => member.aliyot > 1 && member.eventsSinceLastAliyah >= minWeeks)
+        .filter(member => member.eventsSinceLastAliyah >= minWeeks)
         .sort((a, b) => {
           if (a.isManuallyGuest !== b.isManuallyGuest) return a.isManuallyGuest ? 1 : -1;
           return b.eventsSinceLastAliyah - a.eventsSinceLastAliyah;
@@ -2525,7 +2525,7 @@
 
       const members = getLongAbsentMembers(13);
       if (!members.length) {
-        listEl.innerHTML = '<div style="padding:16px; text-align:center; color:#94a3b8;">אין כרגע מתפללים שלא עלו מעל 3 חודשים (מבין מי שעלו לפחות פעמיים).</div>';
+        listEl.innerHTML = '<div style="padding:16px; text-align:center; color:#94a3b8;">אין כרגע מתפללים שלא עלו מעל 3 חודשים.</div>';
         return;
       }
 
@@ -2578,7 +2578,7 @@
 
       const msg =
         '⏳ מתפללים שלא עלו 3 חודשים ומעלה\n' +
-        '(מבוסס על לפחות 13 שבתות/אירועים, ורק מי שכבר עלו לפחות פעמיים)\n\n' +
+        '(מבוסס על לפחות 13 שבתות/אירועים)\n\n' +
         lines.join('\n');
 
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
