@@ -4866,10 +4866,83 @@ async function fetchZmanim() {
 }
 
     // =========================================
+    // MIGRATION: rename legacy guest-map members with " - אורח" suffix
+    // =========================================
+    function migrateGuestMembersNames() {
+      const migrationKey = 'gabbai_guest_migration_done';
+      if (localStorage.getItem(migrationKey)) return;
+
+      const guestMap = getGuestMembersMap();
+      const names = Object.keys(guestMap);
+      if (!names.length) {
+        localStorage.setItem(migrationKey, '1');
+        return;
+      }
+
+      const data = loadData();
+      let changed = false;
+
+      names.forEach(oldName => {
+        if (!data.members[oldName]) return;
+        if (oldName.includes('אורח')) return; // already has suffix
+
+        const newName = oldName + ' - אורח';
+
+        // Rename in members
+        if (data.members[newName]) {
+          data.members[newName].aliyot = (Number(data.members[newName].aliyot) || 0) + (Number(data.members[oldName].aliyot) || 0);
+        } else {
+          data.members[newName] = data.members[oldName];
+        }
+        delete data.members[oldName];
+
+        // Update history
+        data.history.forEach(h => {
+          h.names = h.names.map(n => n.includes(oldName) ? n.replace(oldName, newName) : n);
+        });
+
+        // Update attendance
+        const att = JSON.parse(localStorage.getItem('gabbai_attendance') || '{}');
+        if (att[oldName]) {
+          if (!att[newName]) att[newName] = att[oldName];
+          delete att[oldName];
+          localStorage.setItem('gabbai_attendance', JSON.stringify(att));
+        }
+
+        // Update notes
+        const notes = JSON.parse(localStorage.getItem('gabbai_notes') || '{}');
+        if (notes[oldName]) {
+          if (!notes[newName]) notes[newName] = notes[oldName];
+          delete notes[oldName];
+          localStorage.setItem('gabbai_notes', JSON.stringify(notes));
+        }
+
+        // Update tags
+        const tags = JSON.parse(localStorage.getItem('gabbai_tags') || '{}');
+        if (tags[oldName]) {
+          if (!tags[newName]) tags[newName] = tags[oldName];
+          delete tags[oldName];
+          localStorage.setItem('gabbai_tags', JSON.stringify(tags));
+        }
+
+        // Remove from guest map (name-based detection covers it now)
+        delete guestMap[oldName];
+        changed = true;
+      });
+
+      if (changed) {
+        localStorage.setItem('gabbai_guest_members', JSON.stringify(guestMap));
+        saveData(data);
+      }
+      localStorage.setItem(migrationKey, '1');
+    }
+
+    // =========================================
     // INIT
     // =========================================
     window.addEventListener('DOMContentLoaded', () => {
       loadData();
+      migrateGuestMembersNames();
       updateDatalist();
       fetchZmanim();
       addInputRow(); addInputRow(); addInputRow();
