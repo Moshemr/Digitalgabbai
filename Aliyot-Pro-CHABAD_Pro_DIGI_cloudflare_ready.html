@@ -1277,11 +1277,24 @@
       return (entry && (entry.eventName || entry.parsha || '') || '').trim();
     }
 
+    function isKnownParsha(label) {
+      const txt = String(label || '').trim();
+      if (!txt) return false;
+      for (const parshiot of Object.values(TORAH_BOOKS)) {
+        if (parshiot.includes(txt)) return true;
+      }
+      return false;
+    }
+
     function normalizeHistoryEntry(entry) {
       const rawParsha = String(entry?.parsha || entry?.eventName || '').trim();
       const rawEventName = String(entry?.eventName || rawParsha).trim();
       const flags = (entry?.flags && typeof entry.flags === 'object') ? { ...entry.flags } : {};
-      const eventType = normalizeEventType(entry?.eventType || inferEventTypeFromLabel(rawEventName || rawParsha));
+      let eventType = normalizeEventType(entry?.eventType || inferEventTypeFromLabel(rawEventName || rawParsha));
+      // Fix legacy entries: if tagged as yom_tov but parsha is a known Torah parsha, it's shabbat
+      if (eventType === 'yom_tov' && isKnownParsha(rawParsha)) {
+        eventType = 'shabbat';
+      }
       const eventName = rawEventName || rawParsha || getEventConfig(eventType).label;
       const legacyParsha = rawParsha || eventName;
       return {
