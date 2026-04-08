@@ -72,17 +72,18 @@
       display: inline-flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 20px;
+      gap: 16px;
       background: #f1f5f9;
-      padding: 12px 30px;
-      border-radius: 50px;
+      padding: 12px 24px;
+      border-radius: 14px;
       border: 1px solid var(--border);
       font-weight: 600;
-      margin-top: 15px;
-      font-size: 0.95rem;
+      margin-top: 12px;
+      font-size: 0.9rem;
     }
-    .zman-item { display: flex; align-items: center; gap: 8px; }
-    .icon { font-size: 1.2em; }
+    .zman-item { display: flex; align-items: center; gap: 6px; }
+    .zman-label { color: var(--text-muted); font-size: 0.72rem; font-weight: 700; }
+    .zman-sep { width: 1px; height: 20px; background: #cbd5e1; flex-shrink: 0; }
     /* Navigation Tabs */
     .tabs {
       display: flex;
@@ -103,7 +104,7 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .tab-icon { margin-left: 4px; }
+    .tab-icon-svg { width: 18px; height: 18px; display: inline-block; vertical-align: middle; margin-left: 6px; stroke: currentColor; }
     .tab-label { }
     .tab-btn:hover, .tab-btn:focus { background: #eef2ff; color: var(--primary); outline: none; }
     .tab-btn[aria-selected="true"] {
@@ -389,16 +390,31 @@
       .brand-subtitle { font-size: 0.82rem; flex-wrap: wrap; gap: 4px; }
       .ai-badge { font-size: 0.72rem; padding: 2px 8px; }
 
-      /* ---- Zmanim: horizontal scroll, compact ---- */
+      /* ---- Zmanim: wrap into mini-cards ---- */
       .zmanim-bar {
-        gap: 8px; padding: 8px 10px; border-radius: 10px;
-        font-size: 0.82rem; margin-top: 10px;
-        overflow-x: auto; flex-wrap: nowrap;
-        scrollbar-width: none; -ms-overflow-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        margin-top: 8px;
+        width: 100%;
       }
-      .zmanim-bar::-webkit-scrollbar { display: none; }
-      .zman-item { white-space: nowrap; flex-shrink: 0; }
-      .zmanim-bar .divider { display: none; }
+      .zman-item {
+        flex-direction: column;
+        gap: 1px;
+        align-items: center;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 5px 10px;
+        min-width: calc(33% - 6px);
+        text-align: center;
+      }
+      .zman-label { font-size: 0.6rem; color: var(--primary); font-weight: 800; }
+      .zman-sep { display: none; }
 
       /* ---- Global search: full width ---- */
       .global-search-wrapper { max-width: 100%; margin-top: 10px; }
@@ -442,8 +458,8 @@
         justify-content: center;
         line-height: 1.1;
       }
-      .tab-icon { font-size: 1.25rem; margin: 0; }
-      .tab-label { font-size: 0.6rem; font-weight: 600; }
+      .tab-icon-svg { width: 22px; height: 22px; margin: 0 0 2px 0; }
+      .tab-label { font-size: 0.58rem; font-weight: 700; }
       .tab-btn[aria-selected="true"] {
         background: #eef2ff;
         color: var(--primary);
@@ -690,28 +706,28 @@
       </div>
       <div class="zmanim-bar" aria-label="זמני היום">
         <div class="zman-item">
-          <span class="icon" aria-hidden="true">📅</span>
-          <span id="hebrewDate">טוען תאריך...</span>
+          <span class="zman-label">תאריך</span>
+          <span id="hebrewDate">טוען...</span>
         </div>
-        <div style="width:1px; height:20px; background:#cbd5e1;" class="divider" aria-hidden="true"></div>
+        <div class="zman-sep" aria-hidden="true"></div>
         <div class="zman-item">
-          <span class="icon" aria-hidden="true">🌾</span>
-          <span id="omerCount">טוען ספירת העומר...</span>
+          <span class="zman-label">פרשה</span>
+          <span id="parshaName" style="font-family:'SBL Hebrew','David',serif;">טוען...</span>
         </div>
-        <div style="width:1px; height:20px; background:#cbd5e1;" class="divider" aria-hidden="true"></div>
+        <div class="zman-sep" aria-hidden="true"></div>
         <div class="zman-item">
-          <span class="icon" aria-hidden="true">📜</span>
-          <span id="parshaName" style="font-family: 'SBL Hebrew', 'David', serif; font-size:1.1em;">טוען פרשה...</span>
+          <span class="zman-label">עומר</span>
+          <span id="omerCount">טוען...</span>
         </div>
-        <div style="width:1px; height:20px; background:#cbd5e1;" class="divider" aria-hidden="true"></div>
+        <div class="zman-sep" aria-hidden="true"></div>
         <div class="zman-item">
-          <span class="icon" aria-hidden="true">🕯️</span>
-          <span id="shabbatTimes">טוען זמנים...</span>
+          <span class="zman-label">כניסה/יציאה</span>
+          <span id="shabbatTimes">טוען...</span>
         </div>
-        <div style="width:1px; height:20px; background:#cbd5e1;" class="divider" aria-hidden="true"></div>
+        <div class="zman-sep" aria-hidden="true"></div>
         <div class="zman-item">
-          <span class="icon" aria-hidden="true">🎉</span>
-          <span id="nextHoliday">טוען חג...</span>
+          <span class="zman-label">חג קרוב</span>
+          <span id="nextHoliday">טוען...</span>
         </div>
       </div>
       <!-- Global Search -->
@@ -726,14 +742,14 @@
         <div class="global-search-results" id="globalSearchResults" style="display:none;"></div>
       </div>
       <div class="tabs" role="tablist">
-        <button class="tab-btn" role="tab" aria-selected="true" tabindex="0" onclick="switchTab('dashboard')"><span class="tab-icon">📊</span><span class="tab-label">דשבורד</span></button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('entry')"><span class="tab-icon">✍️</span><span class="tab-label">הזנה</span></button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('insights')"><span class="tab-icon">🧠</span><span class="tab-label">תובנות</span></button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('recommendations')"><span class="tab-icon">💡</span><span class="tab-label">המלצות</span></button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('longabsent')"><span class="tab-icon">⏳</span><span class="tab-label">לא עלו</span></button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('members')"><span class="tab-icon">👥</span><span class="tab-label">מתפללים</span></button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('trends')"><span class="tab-icon">📈</span><span class="tab-label">מגמות</span></button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('history')"><span class="tab-icon">📜</span><span class="tab-label">היסטוריה</span></button>
+        <button class="tab-btn" role="tab" aria-selected="true" tabindex="0" onclick="switchTab('dashboard')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg><span class="tab-label">דשבורד</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('entry')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg><span class="tab-label">הזנה</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('insights')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg><span class="tab-label">תובנות</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('recommendations')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6m-5-8h.01M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2.26C9.19 13.47 8 11.38 8 9a7 7 0 017-7h-3z"/></svg><span class="tab-label">המלצות</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('longabsent')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="tab-label">לא עלו</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('members')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75"/></svg><span class="tab-label">מתפללים</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('trends')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="tab-label">מגמות</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('history')"><svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span class="tab-label">היסטוריה</span></button>
       </div>
     </header>
     <main>
