@@ -298,6 +298,28 @@
       flex: 0 0 auto;
       white-space: nowrap;
     }
+    .aliyah-row .sale-toggle {
+      flex: 0 0 auto;
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #6b7280;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .aliyah-row .sale-toggle:hover {
+      border-color: #f59e0b;
+    }
+    .aliyah-row .sale-toggle.active {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      color: #92400e;
+      font-weight: 800;
+    }
 
     /* קבוצות סינון/מיון – label + select באותה שורה */
     .filter-inline {
@@ -1222,12 +1244,14 @@
     }
 
     function applyHistoryEntryToMembers(data, entry) {
+      const salesSet = new Set(entry.flags?.sales || []);
       entry.names.forEach(rawName => {
         const cleanName = String(rawName || '').split('(')[0].trim();
         if (!cleanName) return;
         if (!data.members[cleanName]) {
           data.members[cleanName] = { aliyot: 0, lastAliyah: '', lastAliyahMeta: null };
         }
+        if (salesSet.has(cleanName)) return; // מכירה — לא נספר בדוחות
         data.members[cleanName].aliyot++;
         data.members[cleanName].lastAliyah = entry.parsha;
         data.members[cleanName].lastAliyahMeta = {
@@ -2052,7 +2076,11 @@
                 const isHighlighted = isMemberMatch || isSearchMatch;
                 const displayName = searchTerm ? hl(n, searchTerm) : (memberFilter ? hl(n, memberFilter) : n);
                 const cleanName = n.split('(')[0].trim().replace(/'/g, "\\'");
-                return `<span class="clickable-name" onclick="openProfile('${cleanName}')" style="background:${isHighlighted ? '#fefce8' : '#f1f5f9'}; border:1px solid ${isHighlighted ? '#eab308' : '#e2e8f0'}; padding:2px 8px; border-radius:4px; font-size:0.9rem; font-weight:${isHighlighted ? '700' : '400'}; cursor:pointer;" title="פתח כרטיס - ${cleanName}">${displayName}</span>`;
+                const isSale = Array.isArray(h.flags?.sales) && h.flags.sales.includes(cleanName.replace(/\\'/g, "'"));
+                const saleBadge = isSale ? '<span style="background:#f59e0b; color:white; padding:1px 5px; border-radius:4px; font-size:0.7rem; font-weight:800; margin-right:4px;">מכירה</span>' : '';
+                const saleBg = isSale ? '#fef3c7' : (isHighlighted ? '#fefce8' : '#f1f5f9');
+                const saleBorder = isSale ? '#f59e0b' : (isHighlighted ? '#eab308' : '#e2e8f0');
+                return `<span class="clickable-name" onclick="openProfile('${cleanName}')" style="background:${saleBg}; border:1px solid ${saleBorder}; padding:2px 8px; border-radius:4px; font-size:0.9rem; font-weight:${isHighlighted ? '700' : '400'}; cursor:pointer;" title="${isSale ? 'מכירה — ' : ''}פתח כרטיס - ${cleanName}">${saleBadge}${displayName}</span>`;
               }).join('')}
            </div>
         </div>
@@ -3223,12 +3251,13 @@
     // =========================================
     // 5. INPUT & ACTIONS
     // =========================================
-    function addInputRow(nameVal = '', noteVal = '') {
+    function addInputRow(nameVal = '', noteVal = '', isSale = false) {
       const div = document.createElement('div');
       div.className = 'aliyah-row';
       div.innerHTML = `
         <input type="text" class="form-control" name="aliyahName" placeholder="שם העולה" list="membersDatalist" value="${nameVal}" required>
         <input type="text" class="form-control" name="aliyahNote" placeholder="הערה (מפטיר/מנחה/חתן)" value="${noteVal}">
+        <button type="button" class="sale-toggle ${isSale ? 'active' : ''}" onclick="this.classList.toggle('active')" title="סמן כמכירת עליה — לא ייספר בדוחות" aria-label="מכירה">💰 מכירה</button>
         <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()" aria-label="מחק שורה" style="padding:0 15px;">✕</button>
       `;
       document.getElementById('inputsContainer').appendChild(div);
@@ -5064,8 +5093,9 @@ async function fetchZmanim() {
         for(let row of rows) {
            const nameEl = row.querySelector('[name="aliyahName"]');
            const noteEl = row.querySelector('[name="aliyahNote"]');
+           const saleEl = row.querySelector('.sale-toggle');
            const name = nameEl.value.trim();
-           if(name) nameInputs.push({ name, note: noteEl.value.trim(), el: nameEl });
+           if(name) nameInputs.push({ name, note: noteEl.value.trim(), el: nameEl, isSale: saleEl && saleEl.classList.contains('active') });
         }
         if(!nameInputs.length) { alert('לא הוזנו שמות'); return; }
 
@@ -5268,7 +5298,10 @@ async function fetchZmanim() {
       }
 
       const names = nameInputs.map(n => n.note ? `${n.name} (${n.note})` : n.name);
-      const entry = buildHistoryEntry(names, eventData, { flags: { source: 'manual-entry' } });
+      const saleNames = nameInputs.filter(n => n.isSale).map(n => n.name);
+      const entryFlags = { source: 'manual-entry' };
+      if (saleNames.length) entryFlags.sales = saleNames;
+      const entry = buildHistoryEntry(names, eventData, { flags: entryFlags });
       data.history.unshift(entry);
       applyHistoryEntryToMembers(data, entry);
 
