@@ -95,6 +95,15 @@
       <span>סה״כ: <strong id="totalCount">0</strong></span>
     </div>
 
+    <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; align-items:center;">
+      <input type="text" id="hitSearch" placeholder="🔍 חפש פרשה או תורם..." oninput="render()" style="flex:1; min-width:140px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.88rem;">
+      <select id="hitFilter" onchange="render()" style="padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem;">
+        <option value="all">הכל</option>
+        <option value="free">פנויות בלבד</option>
+        <option value="taken">תפוסות בלבד</option>
+      </select>
+    </div>
+    <div id="adminShareBar" style="display:none; margin-bottom:10px;"></div>
     <div id="tableContainer"><div class="loading">🔄 טוען נתונים...</div></div>
 
     <div class="share-bar">
@@ -161,21 +170,48 @@
       if (!appData || !appData.entries) return;
       document.getElementById('yearBadge').textContent = appData.year || '';
 
-      const taken = appData.entries.filter(e => e.donor).length;
-      const free = appData.entries.length - taken;
+      const allEntries = appData.entries;
+      const taken = allEntries.filter(e => e.donor).length;
+      const free = allEntries.length - taken;
       document.getElementById('takenCount').textContent = taken;
       document.getElementById('freeCount').textContent = free;
-      document.getElementById('totalCount').textContent = appData.entries.length;
+      document.getElementById('totalCount').textContent = allEntries.length;
 
       const shareMsg = `התוועדויות ${appData.year || ''} - בית חב״ד קרית רבין\nבואו לתרום קידוש לשבת!\n${window.location.href}`;
       document.getElementById('shareLink').href = `https://wa.me/?text=${encodeURIComponent(shareMsg)}`;
+
+      // Search & filter
+      const search = (document.getElementById('hitSearch')?.value || '').trim().toLowerCase();
+      const filter = document.getElementById('hitFilter')?.value || 'all';
+
+      // Admin share bar — encourage donations for unclaimed parshas
+      const adminShareEl = document.getElementById('adminShareBar');
+      if (isAdmin && free > 0) {
+        adminShareEl.style.display = 'block';
+        adminShareEl.innerHTML = `<button onclick="shareUnclaimed()" style="width:100%; padding:10px; background:var(--brand); color:white; border:none; border-radius:10px; font-size:0.92rem; font-weight:700; cursor:pointer;">📣 שלח תזכורת לקבוצה — ${free} שבתות ממתינות לתורמים</button>`;
+      } else {
+        adminShareEl.style.display = 'none';
+      }
 
       let html = `<table><thead><tr>
         <th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th><th></th>
       </tr></thead><tbody>`;
 
-      appData.entries.forEach((e, i) => {
+      let visibleCount = 0;
+      allEntries.forEach((e, i) => {
         const isTaken = Boolean(e.donor);
+
+        // Apply filter
+        if (filter === 'free' && isTaken) return;
+        if (filter === 'taken' && !isTaken) return;
+
+        // Apply search
+        if (search) {
+          const haystack = `${e.parsha} ${e.donor || ''} ${e.eventType || ''} ${e.notes || ''} ${e.dateHe || ''}`.toLowerCase();
+          if (!haystack.includes(search)) return;
+        }
+
+        visibleCount++;
         const rowClass = isTaken ? 'taken' : '';
         const donorCell = isTaken
           ? `<span class="donor-name">${e.donor}</span>${e.eventType ? `<br><span class="event-badge">${e.eventType}</span>` : ''}${e.notes ? `<br><span class="notes-text">${e.notes}</span>` : ''}`
@@ -193,8 +229,29 @@
         </tr>`;
       });
 
+      if (!visibleCount) {
+        html += `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--gray);">לא נמצאו תוצאות</td></tr>`;
+      }
+
       html += '</tbody></table>';
       document.getElementById('tableContainer').innerHTML = html;
+    }
+
+    function shareUnclaimed() {
+      if (!appData || !appData.entries) return;
+      const freeEntries = appData.entries.filter(e => !e.donor);
+      if (!freeEntries.length) { alert('כל השבתות תפוסות!'); return; }
+
+      let msg = `🕯️ *התוועדויות ${appData.year || ''} — בית חב״ד קרית רבין*\n\n`;
+      msg += `📣 *${freeEntries.length} שבתות עדיין ממתינות לתורמים!*\n`;
+      msg += `ניתן לתרום לרגל יום הולדת, אזכרה, לרפואת, לזכות ועוד.\n\n`;
+      msg += `*שבתות פנויות:*\n`;
+      freeEntries.forEach((e, idx) => {
+        msg += `${idx + 1}. ${e.parsha} — ${e.dateHe || ''} (${e.dateGreg || ''})\n`;
+      });
+      msg += `\n👈 לתפיסת שבת:\n${window.location.href}`;
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function toggleAdmin() {
