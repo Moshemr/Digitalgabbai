@@ -67,28 +67,29 @@
     }
     /* ===== PRINT / PDF STYLES ===== */
     @media print {
-      @page { size: A4 portrait; margin: 12mm 10mm; }
-      body { background: white; color: black; padding: 0; font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      header { background: #6b1c2a !important; color: white !important; padding: 14px; border-radius: 0; page-break-after: avoid; }
+      @page { size: A4 portrait; margin: 6mm 7mm; }
+      body { background: white; color: black; padding: 0; font-size: 7pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      header { background: #6b1c2a !important; color: white !important; padding: 6px 10px; border-radius: 0; page-break-after: avoid; }
       .admin-toggle, .admin-bar, .share-bar, .modal-overlay, #hitSearch, #hitFilter, #adminShareBar, #msgArea, .claim-btn, .admin-edit-btn, .lock-icon, .stats, .no-print { display: none !important; }
       .container { max-width: 100%; padding: 0; }
-      .logo { font-size: 2rem; }
-      header h1 { font-size: 1.1rem; margin-top: 4px; }
-      header p { font-size: 0.85rem; }
-      .year-badge { background: rgba(255,255,255,0.25) !important; font-size: 0.9rem; }
-      .bsd { color: white !important; opacity: 0.8; }
-      /* Print header with stats */
-      .print-header { display: block !important; text-align: center; padding: 8px 0; font-size: 10pt; color: #333; border-bottom: 2px solid #6b1c2a; margin-bottom: 8px; }
-      table { width: 100%; border-collapse: collapse; font-size: 9.5pt; box-shadow: none; border-radius: 0; }
-      th { background: #6b1c2a !important; color: white !important; padding: 6px 5px; font-size: 9pt; border: 1px solid #999; }
-      td { padding: 5px 4px; border: 1px solid #ccc; font-size: 9pt; }
+      .logo { font-size: 1.4rem; }
+      .logo + h1 { margin-top: 1px; }
+      header h1 { font-size: 0.85rem; margin-top: 2px; }
+      header p { font-size: 0.65rem; margin-top: 1px; }
+      .year-badge { background: rgba(255,255,255,0.25) !important; font-size: 0.7rem; padding: 1px 8px; margin-top: 2px; }
+      .bsd { color: white !important; opacity: 0.8; font-size: 0.7rem; top: 4px; right: 6px; }
+      .print-header { display: block !important; text-align: center; padding: 2px 0; font-size: 7pt; color: #333; border-bottom: 1.5px solid #6b1c2a; margin-bottom: 2px; }
+      table { width: 100%; border-collapse: collapse; font-size: 7pt; box-shadow: none; border-radius: 0; }
+      th { background: #6b1c2a !important; color: white !important; padding: 2px 3px; font-size: 6.5pt; border: 0.5px solid #999; line-height: 1.2; }
+      td { padding: 1.5px 3px; border: 0.5px solid #ccc; font-size: 7pt; line-height: 1.25; }
       tr.taken { background: #fdf2f4 !important; }
-      .parsha-name { font-size: 10pt; color: #6b1c2a !important; }
-      .donor-name { font-size: 9pt; }
-      .event-badge { background: #fef3c7 !important; border: 1px solid #d4a017; font-size: 7pt; padding: 1px 4px; }
-      .notes-text { font-size: 7pt; }
-      /* Footer */
-      .print-footer { display: block !important; text-align: center; margin-top: 10px; font-size: 8pt; color: #666; border-top: 1px solid #ccc; padding-top: 6px; }
+      .parsha-name { font-size: 7.5pt; color: #6b1c2a !important; }
+      .donor-name { font-size: 7pt; }
+      .event-badge { background: #fef3c7 !important; border: 0.5px solid #d4a017; font-size: 5.5pt; padding: 0 3px; }
+      .notes-text { font-size: 5.5pt; }
+      td span[style*="font-size:0.65rem"], td span[style*="font-size:0.7rem"] { display: none !important; }
+      td span[style*="font-size:0.75rem"] { font-size: 6pt !important; }
+      .print-footer { display: block !important; text-align: center; margin-top: 3px; font-size: 6.5pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 2px; }
     }
     .print-header, .print-footer { display: none; }
   </style>
