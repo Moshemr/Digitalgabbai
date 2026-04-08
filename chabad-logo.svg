@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 150" dir="rtl">
+  <defs>
+    <linearGradient id="flag" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6b1c2a"/>
+      <stop offset="50%" stop-color="#7a2035"/>
+      <stop offset="100%" stop-color="#6b1c2a"/>
+    </linearGradient>
+  </defs>
+  <!-- Flag shape -->
+  <path d="M10,5 L270,5 Q275,5 275,10 L275,130 Q275,145 260,140 L140,115 L20,140 Q5,145 5,130 L5,10 Q5,5 10,5 Z" fill="url(#flag)"/>
+  <!-- חב"ד text -->
+  <text x="140" y="82" text-anchor="middle" font-family="'Frank Ruhl Libre','David','SBL Hebrew',serif" font-size="72" font-weight="900" letter-spacing="3">
+    <tspan fill="white">ח</tspan><tspan fill="#f5a623">ב</tspan><tspan fill="white" font-size="36" dy="-18">"</tspan><tspan fill="white" font-size="72" dy="18">ד</tspan>
+  </text>
+  <!-- כל הלב לכל אחד -->
+  <text x="140" y="110" text-anchor="middle" font-family="'Frank Ruhl Libre','David','SBL Hebrew',serif" font-size="16" fill="rgba(255,255,255,0.85)" letter-spacing="2">כל הלב לכל אחד</text>
+</svg>

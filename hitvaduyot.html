@@ -373,9 +373,10 @@
           const idx = startIdx + i + 1;
           const cls = e.donor ? ' class="tk"' : '';
           const partners = (e.additionalDonors || []).length ? `<br><span class="prt">+ ${e.additionalDonors.join(', ')}</span>` : '';
-          const evBadge = e.eventType ? `<br><span class="ev">${e.eventType}</span>` : '';
+          const evBadge = e.eventType ? ` <span class="ev">${e.eventType}</span>` : '';
           const donor = e.donor ? `<span class="dn">${e.donor}</span>${partners}${evBadge}` : '';
-          h += `<tr${cls}><td>${idx}</td><td class="pn">${e.parsha}</td><td>${e.dateHe || ''}</td><td>${donor}</td></tr>`;
+          const dateStr = [e.dateHe, e.dateGreg].filter(Boolean).join(' - ');
+          h += `<tr${cls}><td>${idx}</td><td class="pn">${e.parsha}</td><td style="white-space:nowrap;">${dateStr}</td><td>${donor}</td></tr>`;
         });
         h += '</tbody></table>';
         return h;
@@ -386,10 +387,7 @@
         <div class="p-wrap" style="position:relative;">
           <div class="p-header" style="position:relative;">
             <span class="p-bsd">בס"ד</span>
-            <div class="p-logo">
-              <div class="p-logo-text"><span>ח</span><span class="bet">ב</span><span>"</span><span>ד</span></div>
-              <div class="p-logo-slogan">כל הלב לכל אחד</div>
-            </div>
+            <img src="/chabad-logo.svg" alt="חב״ד" style="height:42px; border-radius:4px;">
             <div>
               <div class="p-title">התוועדויות - תרומות קידוש</div>
               <div class="p-sub">בית חב"ד קרית רבין - מגדל העמק | ${appData.year || ''}</div>
