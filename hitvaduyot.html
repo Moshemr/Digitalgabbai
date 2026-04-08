@@ -394,84 +394,74 @@
       } catch (e) { /* silent — autocomplete is optional */ }
     }
 
+    // Hardcoded parsha schedule for תשפ״ז (5787: Sept 2026 – Sept 2027)
+    const PARSHAS_5787 = [
+      {parsha:"האזינו",dateHe:"ח׳ תשרי",dateGreg:"19.09"},
+      {parsha:"שבת חול המועד סוכות",dateHe:"ט״ו תשרי",dateGreg:"26.09"},
+      {parsha:"בראשית",dateHe:"כ״ט תשרי",dateGreg:"10.10"},
+      {parsha:"נח",dateHe:"ו׳ חשוון",dateGreg:"17.10"},
+      {parsha:"לך לך",dateHe:"י״ג חשוון",dateGreg:"24.10"},
+      {parsha:"וירא",dateHe:"כ׳ חשוון",dateGreg:"31.10"},
+      {parsha:"חיי שרה",dateHe:"כ״ז חשוון",dateGreg:"7.11"},
+      {parsha:"תולדות",dateHe:"ד׳ כסלו",dateGreg:"14.11"},
+      {parsha:"ויצא",dateHe:"י״א כסלו",dateGreg:"21.11"},
+      {parsha:"וישלח",dateHe:"י״ח כסלו",dateGreg:"28.11"},
+      {parsha:"וישב",dateHe:"כ״ה כסלו",dateGreg:"5.12"},
+      {parsha:"מקץ",dateHe:"ב׳ טבת",dateGreg:"12.12"},
+      {parsha:"ויגש",dateHe:"ט׳ טבת",dateGreg:"19.12"},
+      {parsha:"ויחי",dateHe:"ט״ז טבת",dateGreg:"26.12"},
+      {parsha:"שמות",dateHe:"כ״ג טבת",dateGreg:"2.01"},
+      {parsha:"וארא",dateHe:"ל׳ טבת",dateGreg:"9.01"},
+      {parsha:"בא",dateHe:"ז׳ שבט",dateGreg:"16.01"},
+      {parsha:"בשלח",dateHe:"י״ד שבט",dateGreg:"23.01"},
+      {parsha:"יתרו",dateHe:"כ״א שבט",dateGreg:"30.01"},
+      {parsha:"משפטים",dateHe:"כ״ח שבט",dateGreg:"6.02"},
+      {parsha:"תרומה",dateHe:"ו׳ אדר",dateGreg:"13.02"},
+      {parsha:"תצוה",dateHe:"י״ג אדר",dateGreg:"20.02"},
+      {parsha:"כי תשא",dateHe:"כ׳ אדר",dateGreg:"27.02"},
+      {parsha:"ויקהל פקודי",dateHe:"כ״ז אדר",dateGreg:"6.03"},
+      {parsha:"ויקרא",dateHe:"ה׳ ניסן",dateGreg:"13.03"},
+      {parsha:"צו",dateHe:"י״ב ניסן",dateGreg:"20.03"},
+      {parsha:"שבת חול המועד פסח",dateHe:"י״ט ניסן",dateGreg:"27.03"},
+      {parsha:"שמיני",dateHe:"כ״ו ניסן",dateGreg:"3.04"},
+      {parsha:"תזריע מצורע",dateHe:"ג׳ אייר",dateGreg:"10.04"},
+      {parsha:"אחרי מות קדושים",dateHe:"י׳ אייר",dateGreg:"17.04"},
+      {parsha:"אמור",dateHe:"י״ז אייר",dateGreg:"24.04"},
+      {parsha:"בהר בחוקותי",dateHe:"כ״ד אייר",dateGreg:"1.05"},
+      {parsha:"במדבר",dateHe:"א׳ סיוון",dateGreg:"8.05"},
+      {parsha:"נשא",dateHe:"ח׳ סיוון",dateGreg:"15.05"},
+      {parsha:"בהעלותך",dateHe:"ט״ו סיוון",dateGreg:"22.05"},
+      {parsha:"שלח",dateHe:"כ״ב סיוון",dateGreg:"29.05"},
+      {parsha:"קרח",dateHe:"כ״ט סיוון",dateGreg:"5.06"},
+      {parsha:"חקת",dateHe:"ו׳ תמוז",dateGreg:"12.06"},
+      {parsha:"בלק",dateHe:"י״ג תמוז",dateGreg:"19.06"},
+      {parsha:"פנחס",dateHe:"כ׳ תמוז",dateGreg:"26.06"},
+      {parsha:"מטות מסעי",dateHe:"כ״ז תמוז",dateGreg:"3.07"},
+      {parsha:"דברים",dateHe:"ד׳ אב",dateGreg:"10.07"},
+      {parsha:"ואתחנן",dateHe:"י״א אב",dateGreg:"17.07"},
+      {parsha:"עקב",dateHe:"י״ח אב",dateGreg:"24.07"},
+      {parsha:"ראה",dateHe:"כ״ה אב",dateGreg:"31.07"},
+      {parsha:"שופטים",dateHe:"ג׳ אלול",dateGreg:"7.08"},
+      {parsha:"כי תצא",dateHe:"י׳ אלול",dateGreg:"14.08"},
+      {parsha:"כי תבוא",dateHe:"י״ז אלול",dateGreg:"21.08"},
+      {parsha:"ניצבים וילך",dateHe:"כ״ד אלול",dateGreg:"28.08"}
+    ];
+
     async function initYearFromHebcal(hebrewYear) {
       if (!isAdmin || !adminPassword) { alert('נא להתחבר כמנהל'); return; }
       if (!confirm(`אתחול שנת ${hebrewYear}? זה ימחק נתונים קיימים.`)) return;
 
-      showMsg('success', '🔄 טוען פרשיות מ-Hebcal...');
+      const entries = PARSHAS_5787.map(e => ({
+        ...e, donor:'', eventType:'', notes:'', locked:false, lockedAt:'', additionalDonors:[]
+      }));
 
+      const body = { action:'init', password:adminPassword, year:hebrewYear, entries };
       try {
-        // Fetch full year sedrot from Hebcal
-        const gregYear1 = hebrewYear === 'תשפ״ז' ? 2026 : 2025;
-        const gregYear2 = gregYear1 + 1;
-        const url1 = `https://www.hebcal.com/hebcal?v=1&cfg=json&year=${gregYear1}&month=x&ss=on&c=off&lg=he&i=on&geo=none`;
-        const url2 = `https://www.hebcal.com/hebcal?v=1&cfg=json&year=${gregYear2}&month=x&ss=on&c=off&lg=he&i=on&geo=none`;
-
-        const [res1, res2] = await Promise.all([fetch(url1), fetch(url2)]);
-        const [data1, data2] = await Promise.all([res1.json(), res2.json()]);
-
-        const allItems = [...(data1.items || []), ...(data2.items || [])];
-        const parshaItems = allItems.filter(i => i.category === 'parashat');
-
-        // Filter to Hebrew year range (Tishrei gregYear1+1 month 9 to Elul gregYear2 month 8)
-        // Rosh Hashana 5787 = Sept 2026, ends Elul 5787 = Sept 2027
-        const roshHashana = new Date(gregYear1, 8, 1); // approx start search
-        const nextRH = new Date(gregYear2, 8, 30);
-
-        const filtered = parshaItems
-          .filter(i => {
-            const d = new Date(i.date);
-            return d >= roshHashana && d <= nextRH;
-          })
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // Remove duplicates by date
-        const seen = new Set();
-        const unique = filtered.filter(i => {
-          if (seen.has(i.date)) return false;
-          seen.add(i.date);
-          return true;
-        });
-
-        if (!unique.length) {
-          showMsg('error', 'לא נמצאו פרשיות. נסה שנית.');
-          return;
-        }
-
-        const entries = unique.map(i => {
-          const d = new Date(i.date);
-          const dayMonth = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
-          const parsha = (i.hebrew || i.title || '').replace(/^פרשת\s+/, '');
-          // Get Hebrew date
-          let dateHe = '';
-          try {
-            const fmt = (opts) => new Intl.DateTimeFormat('he-IL-u-ca-hebrew', opts).format(d);
-            const hDay = parseInt(fmt({ day: 'numeric' }));
-            const hMonth = fmt({ month: 'long' });
-            const ones = ['','א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ז׳','ח׳','ט׳'];
-            const sp = [[15,'ט״ו'],[16,'ט״ז']];
-            const tens = ['','י׳','כ׳','ל׳'];
-            const found = sp.find(x => x[0] === hDay);
-            let dayStr = found ? found[1] : '';
-            if (!dayStr) {
-              const t = Math.floor(hDay/10), o = hDay%10;
-              if (o===0) dayStr = ['','י׳','כ׳','ל׳'][t];
-              else if (t===0) dayStr = ones[o];
-              else dayStr = ['','י','כ','ל'][t] + '״' + ['','א','ב','ג','ד','ה','ו','ז','ח','ט'][o];
-            }
-            dateHe = dayStr + ' ' + hMonth;
-          } catch(e) {}
-          return { parsha, dateHe, dateGreg: dayMonth, donor:'', eventType:'', notes:'', locked:false, lockedAt:'', additionalDonors:[] };
-        });
-
-        const body = { action:'init', password:adminPassword, year:hebrewYear, entries };
         const res = await fetch(API_BASE + '/init', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
         const json = await res.json();
         if (json.ok) { showMsg('success', `טבלת ${hebrewYear} אותחלה עם ${entries.length} פרשיות!`); await fetchData(); }
         else showMsg('error', json.error);
-      } catch(e) {
-        showMsg('error', 'שגיאה בטעינת פרשיות: ' + e.message);
-      }
+      } catch(e) { showMsg('error', 'שגיאת רשת: ' + e.message); }
     }
 
     // Init
