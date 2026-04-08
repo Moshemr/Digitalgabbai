@@ -1240,7 +1240,8 @@
       if (txt.includes('סוכות')) return 'sukkot';
       if (txt.includes('פסח')) return 'pesach';
       if (txt.includes('שבועות')) return 'shavuot';
-      return 'yom_tov';
+      if (txt.includes('חג') || txt.includes('יום טוב') || txt.includes('מועד')) return 'yom_tov';
+      return 'shabbat';
     }
 
     function getCanonicalParsha(entry) {
