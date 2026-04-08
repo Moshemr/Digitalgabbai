@@ -103,6 +103,8 @@
       cursor: pointer;
       transition: all 0.2s;
     }
+    .tab-icon { margin-left: 4px; }
+    .tab-label { }
     .tab-btn:hover, .tab-btn:focus { background: #eef2ff; color: var(--primary); outline: none; }
     .tab-btn[aria-selected="true"] {
       background: var(--primary);
@@ -378,54 +380,149 @@
 
     /* Mobile */
     @media (max-width: 600px) {
+      /* ---- Body: make room for bottom nav ---- */
+      body { padding: 8px 8px 72px 8px; }
+
+      /* ---- Header: compact ---- */
+      header { padding: 12px; margin-bottom: 10px; border-top-width: 4px; }
+      .brand-title { font-size: 1.3rem; margin-bottom: 2px; }
+      .brand-subtitle { font-size: 0.82rem; flex-wrap: wrap; gap: 4px; }
+      .ai-badge { font-size: 0.72rem; padding: 2px 8px; }
+
+      /* ---- Zmanim: horizontal scroll, compact ---- */
+      .zmanim-bar {
+        gap: 8px; padding: 8px 10px; border-radius: 10px;
+        font-size: 0.82rem; margin-top: 10px;
+        overflow-x: auto; flex-wrap: nowrap;
+        scrollbar-width: none; -ms-overflow-style: none;
+      }
+      .zmanim-bar::-webkit-scrollbar { display: none; }
+      .zman-item { white-space: nowrap; flex-shrink: 0; }
+      .zmanim-bar .divider { display: none; }
+
+      /* ---- Global search: full width ---- */
+      .global-search-wrapper { max-width: 100%; margin-top: 10px; }
+      .global-search-kbd { display: none; }
+
+      /* ---- Tabs: fixed bottom nav bar ---- */
       .tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background: var(--bg-card);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+        margin: 0;
+        padding: 4px 2px env(safe-area-inset-bottom, 4px);
+        border-radius: 0;
+        display: flex;
+        justify-content: space-around;
+        gap: 0;
         overflow-x: auto;
         overflow-y: hidden;
         flex-wrap: nowrap;
-        justify-content: flex-start;
-        gap: 6px;
-        padding-bottom: 8px;
-        margin-top: 14px;
-        scrollbar-width: thin;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
       }
+      .tabs::-webkit-scrollbar { display: none; }
       .tab-btn {
+        flex: 1 0 0;
+        min-width: 0;
+        padding: 4px 2px 6px;
+        font-size: inherit;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
         white-space: nowrap;
-        min-height: 42px;
-        padding: 9px 14px;
-        font-size: 0.92rem;
-        flex: 0 0 auto;
+        min-height: 52px;
+        justify-content: center;
+        line-height: 1.1;
       }
-      .tab-share-btn {
-        width: 100%;
-        margin: 0 0 10px 0;
-        min-height: 40px;
-        font-size: 0.9rem;
+      .tab-icon { font-size: 1.25rem; margin: 0; }
+      .tab-label { font-size: 0.6rem; font-weight: 600; }
+      .tab-btn[aria-selected="true"] {
+        background: #eef2ff;
+        color: var(--primary);
+        border-radius: 8px;
       }
+
+      /* ---- Cards ---- */
+      .card { padding: 12px; margin-bottom: 10px; border-radius: 12px; }
+      h2 { font-size: 1.05rem; }
+
+      /* ---- Stats grid: clean 2-col ---- */
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 10px; }
+      .stat-box { padding: 8px 6px; border-radius: 10px; }
+      .stat-number { font-size: 1.3rem; }
+      .stat-label { font-size: 0.7rem; }
+
+      /* ---- Balance bar ---- */
+      .balance-bar { font-size: 0.85rem; min-height: 32px; padding: 6px 8px; margin-bottom: 10px; }
+
+      /* ---- Member items: stack ---- */
       .member-item {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
         padding: 10px 12px;
       }
-      .member-right, .member-left { width: 100%; justify-content: space-between; gap: 8px; }
-      .member-name { font-size: 0.98rem; }
+      .member-right, .member-left { width: 100%; gap: 8px; }
+      .member-left { flex-wrap: wrap; }
+      .member-name { font-size: 0.95rem; }
+
+      /* ---- Buttons: touch-friendly ---- */
+      .btn { min-height: 44px; padding: 10px 14px; font-size: 0.92rem; }
+      .tab-share-btn {
+        width: 100%;
+        margin: 0 0 10px 0;
+        min-height: 44px;
+        font-size: 0.9rem;
+      }
+
+      /* ---- Entry form: stacked ---- */
+      .aliyah-row {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .aliyah-row input[name="aliyahName"] { flex: 1 1 100%; }
+      .aliyah-row input[name="aliyahNote"] { flex: 1 1 55%; max-width: none; }
+      .aliyah-row .sale-toggle { flex: 0 0 auto; min-height: 38px; font-size: 0.78rem; }
+      .aliyah-row .btn-danger { flex: 0 0 auto; min-height: 38px; }
+
+      /* ---- Distribution ---- */
       .distribution-row { gap: 8px; }
       .dist-item { min-width: calc(50% - 4px); padding: 8px 9px; }
+
+      /* ---- Insights ---- */
       .insights-card { padding: 12px; }
       .insight-item { font-size: 0.88rem; padding: 10px; }
-      .aliyah-row { flex-wrap: wrap; gap: 8px; }
-      .aliyah-row input[name="aliyahNote"] { flex: 1 1 100%; max-width: 100%; }
+
+      /* ---- Filters ---- */
       .filter-inline .form-control { width: 100%; }
+
+      /* ---- Shabbat slots ---- */
       .shabbat-slot { flex-wrap: wrap; gap: 6px; align-items: flex-start; }
       .slot-label { min-width: 0; }
       .slot-name { margin: 0; width: 100%; }
       .slot-actions { width: 100%; justify-content: flex-end; }
-      .btn { min-height: 42px; padding: 10px 12px; font-size: 0.95rem; width: 100%; }
+
+      /* ---- Chart ---- */
       .chart-container { height: 150px; }
-      .profile-overlay { padding: 8px; }
-      .profile-card { max-height: 92vh; border-radius: 14px; }
-      .profile-header { padding: 16px; border-radius: 14px 14px 0 0; }
-      .profile-name { font-size: 1.2rem; }
+
+      /* ---- Profile overlay ---- */
+      .profile-overlay { padding: 4px; }
+      .profile-card { max-height: 95vh; border-radius: 14px 14px 0 0; }
+      .profile-header { padding: 14px; border-radius: 14px 14px 0 0; }
+      .profile-name { font-size: 1.15rem; }
+      .profile-close { top: 10px; left: 10px; width: 36px; height: 36px; }
+
+      /* ---- Long absent action buttons ---- */
+      .la-actions-wrap { width: 100%; }
+      .la-actions-wrap .btn { width: auto; }
     }
 
     /* =========================================
@@ -625,14 +722,14 @@
         <div class="global-search-results" id="globalSearchResults" style="display:none;"></div>
       </div>
       <div class="tabs" role="tablist">
-        <button class="tab-btn" role="tab" aria-selected="true" tabindex="0" onclick="switchTab('dashboard')">📊 דשבורד</button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('entry')">✍️ הזנת נתונים</button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('insights')">🧠 תובנות AI</button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('recommendations')">💡 המלצות</button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('longabsent')">⏳ לא עלו 3+ חודשים</button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('members')">👥 מתפללים</button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('trends')">📈 מגמות</button>
-        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('history')">📜 היסטוריה</button>
+        <button class="tab-btn" role="tab" aria-selected="true" tabindex="0" onclick="switchTab('dashboard')"><span class="tab-icon">📊</span><span class="tab-label">דשבורד</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('entry')"><span class="tab-icon">✍️</span><span class="tab-label">הזנה</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('insights')"><span class="tab-icon">🧠</span><span class="tab-label">תובנות</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('recommendations')"><span class="tab-icon">💡</span><span class="tab-label">המלצות</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('longabsent')"><span class="tab-icon">⏳</span><span class="tab-label">לא עלו</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('members')"><span class="tab-icon">👥</span><span class="tab-label">מתפללים</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('trends')"><span class="tab-icon">📈</span><span class="tab-label">מגמות</span></button>
+        <button class="tab-btn" role="tab" aria-selected="false" tabindex="-1" onclick="switchTab('history')"><span class="tab-icon">📜</span><span class="tab-label">היסטוריה</span></button>
       </div>
     </header>
     <main>
