@@ -2633,22 +2633,6 @@
       const listEl = document.getElementById('longAbsentList');
       if (!listEl) return;
 
-      const data = loadData();
-      const manualGuestNames = Object.keys(getGuestMembersMap())
-        .filter(name => data.members[name])
-        .sort((a, b) => a.localeCompare(b, 'he'));
-      const manualGuestsPanel = manualGuestNames.length
-        ? `<div style="padding:12px; margin-bottom:12px; border:2px solid #fbbf24; border-radius:12px; background:#fffbeb;">
-            <div style="font-weight:800; color:#92400e; margin-bottom:8px;">🟡 מסומנים כעת כ״מתפלל אורח״ (לחיצה מבטלת)</div>
-            <div style="display:flex; flex-wrap:wrap; gap:8px;">
-              ${manualGuestNames.map(name => {
-                const esc = name.replace(/'/g, "\\'");
-                return `<button class="btn-icon-small" style="padding:6px 10px; border-radius:999px; background:#fff; border:1px solid #f59e0b; color:#92400e; font-weight:700;" onclick="toggleLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="בטל סימון אורח">${name} ✖</button>`;
-              }).join('')}
-            </div>
-          </div>`
-        : '';
-
       const members = getLongAbsentMembers(13);
       const search = (document.getElementById('longAbsentSearch')?.value || '').trim();
       const filteredMembers = search
@@ -2659,6 +2643,13 @@
         return;
       }
 
+      const totalCount = filteredMembers.length;
+      const countHtml = `
+        <div style="padding:10px 12px; background:#e0e7ff; color:#312e81; border-radius:10px; margin-bottom:10px; font-size:0.95rem; font-weight:800; text-align:center;">
+          סה״כ ${totalCount} מתפללים שלא עלו מעל 3 חודשים
+        </div>
+      `;
+
       const legendHtml = `
         <div style="padding:10px 12px; border:1px solid #fca5a5; background:#fef2f2; color:#7f1d1d; border-radius:10px; margin-bottom:10px; font-size:0.9rem; font-weight:600;">
           סימון אורח: לאחר לחיצה ימתין 10 שניות — אפשר לבטל. לאחר מכן השם ישתנה ל"שם - אורח" והמתפלל יוחרג מדוחות.
@@ -2667,7 +2658,7 @@
         </div>
       `;
 
-      listEl.innerHTML = legendHtml + filteredMembers.map(m => {
+      listEl.innerHTML = countHtml + legendHtml + filteredMembers.map(m => {
         const esc = m.name.replace(/'/g, "\\'");
         const fixedBadge = m.isFixedMember
           ? '<span style="background:#1d4ed8; color:white; padding:4px 10px; border-radius:999px; font-size:0.8rem; font-weight:800;">מתפלל קבוע • עדיפות עליה</span>'
@@ -2693,8 +2684,6 @@
           </div>
         `;
       }).join('');
-
-      listEl.innerHTML = manualGuestsPanel + listEl.innerHTML;
     }
 
     function shareLongAbsentToWhatsApp() {
@@ -4866,24 +4855,24 @@ async function fetchZmanim() {
 }
 
     // =========================================
-    // MIGRATION: rename legacy guest-map members with " - אורח" suffix
+    // MIGRATION: rename guest-map members with " - אורח" suffix
+    // Runs on every load to handle remote-sync restoring old data
     // =========================================
     function migrateGuestMembersNames() {
-      const migrationKey = 'gabbai_guest_migration_done';
-      if (localStorage.getItem(migrationKey)) return;
-
       const guestMap = getGuestMembersMap();
       const names = Object.keys(guestMap);
-      if (!names.length) {
-        localStorage.setItem(migrationKey, '1');
-        return;
-      }
+      if (!names.length) return;
 
       const data = loadData();
       let changed = false;
 
       names.forEach(oldName => {
-        if (!data.members[oldName]) return;
+        if (!data.members[oldName]) {
+          // member doesn't exist — clean stale entry from map
+          delete guestMap[oldName];
+          changed = true;
+          return;
+        }
         if (oldName.includes('אורח')) return; // already has suffix
 
         const newName = oldName + ' - אורח';
@@ -4934,7 +4923,6 @@ async function fetchZmanim() {
         localStorage.setItem('gabbai_guest_members', JSON.stringify(guestMap));
         saveData(data);
       }
-      localStorage.setItem(migrationKey, '1');
     }
 
     // =========================================
