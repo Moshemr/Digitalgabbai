@@ -122,6 +122,8 @@
       <datalist id="membersList"></datalist>
       <label>שם התורם</label>
       <input type="text" id="modalDonor" placeholder="התחל להקליד שם..." list="membersList" autocomplete="off">
+      <label>שותף/ים לתרומה (אופציונלי)</label>
+      <input type="text" id="modalPartner" placeholder="שם שותף — או כמה שמות מופרדים בפסיק" list="membersList" autocomplete="off">
       <label>סוג אירוע</label>
       <select id="modalEventType">
         <option value="">ללא ציון מיוחד</option>
@@ -232,8 +234,12 @@
 
         visibleCount++;
         const rowClass = isTaken ? 'taken' : '';
+        const partners = Array.isArray(e.additionalDonors) && e.additionalDonors.length
+          ? `<br><span style="font-size:0.75rem; color:#6b1c2a;">+ ${e.additionalDonors.join(', ')}</span>` : '';
+        const timeStamp = e.lockedAt
+          ? `<br><span style="font-size:0.65rem; color:#94a3b8;">${new Date(e.lockedAt).toLocaleDateString('he-IL')} ${new Date(e.lockedAt).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>` : '';
         const donorCell = isTaken
-          ? `<span class="donor-name">${e.donor}</span>${e.eventType ? `<br><span class="event-badge">${e.eventType}</span>` : ''}${e.notes ? `<br><span class="notes-text">${e.notes}</span>` : ''}`
+          ? `<span class="donor-name">${e.donor}</span>${partners}${e.eventType ? `<br><span class="event-badge">${e.eventType}</span>` : ''}${e.notes ? `<br><span class="notes-text">${e.notes}</span>` : ''}${timeStamp}`
           : '';
         const canSelfEdit = isTaken && isMyEditableEntry(i, e.donor);
         let actionCell;
@@ -301,6 +307,7 @@
       document.getElementById('modalTitle').textContent = 'תפוס פרשה';
       document.getElementById('modalParsha').textContent = entry.parsha + (entry.dateHe ? ' • ' + entry.dateHe : '');
       document.getElementById('modalDonor').value = '';
+      document.getElementById('modalPartner').value = '';
       document.getElementById('modalEventType').value = '';
       document.getElementById('modalNotes').value = '';
       document.getElementById('modalDonor').readOnly = false;
@@ -317,6 +324,7 @@
       document.getElementById('modalTitle').textContent = 'עריכת מנהל';
       document.getElementById('modalParsha').textContent = entry.parsha + (entry.dateHe ? ' • ' + entry.dateHe : '');
       document.getElementById('modalDonor').value = entry.donor || '';
+      document.getElementById('modalPartner').value = (entry.additionalDonors || []).join(', ');
       document.getElementById('modalEventType').value = entry.eventType || '';
       document.getElementById('modalNotes').value = entry.notes || '';
       document.getElementById('modalDonor').readOnly = false;
@@ -325,6 +333,12 @@
         <button class="btn-unlock" onclick="submitUnlock()">פנה פרשה</button>
         <button class="btn-cancel" onclick="closeModal()">ביטול</button>`;
       document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function getPartners() {
+      const val = (document.getElementById('modalPartner')?.value || '').trim();
+      if (!val) return [];
+      return val.split(/[,،、]/).map(s => s.trim()).filter(Boolean);
     }
 
     function closeModal() {
@@ -339,6 +353,7 @@
         action: 'claim',
         parshaIndex: currentEditIndex,
         donor,
+        additionalDonors: getPartners(),
         eventType: document.getElementById('modalEventType').value,
         notes: document.getElementById('modalNotes').value.trim()
       };
@@ -364,6 +379,7 @@
       document.getElementById('modalTitle').textContent = 'עריכת התרומה שלי';
       document.getElementById('modalParsha').textContent = entry.parsha + (entry.dateHe ? ' • ' + entry.dateHe : '');
       document.getElementById('modalDonor').value = entry.donor || '';
+      document.getElementById('modalPartner').value = (entry.additionalDonors || []).join(', ');
       document.getElementById('modalEventType').value = entry.eventType || '';
       document.getElementById('modalNotes').value = entry.notes || '';
       document.getElementById('modalDonor').readOnly = false;
@@ -381,6 +397,7 @@
         parshaIndex: currentEditIndex,
         donor: entry.donor,
         newDonor: document.getElementById('modalDonor').value.trim(),
+        additionalDonors: getPartners(),
         eventType: document.getElementById('modalEventType').value,
         notes: document.getElementById('modalNotes').value.trim()
       };
@@ -425,6 +442,7 @@
         password: adminPassword,
         parshaIndex: currentEditIndex,
         donor: document.getElementById('modalDonor').value.trim(),
+        additionalDonors: getPartners(),
         eventType: document.getElementById('modalEventType').value,
         notes: document.getElementById('modalNotes').value.trim()
       };

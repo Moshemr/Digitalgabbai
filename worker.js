@@ -86,7 +86,7 @@ export default {
 
           // CLAIM — claim a parsha (public, first come first served)
           if (action === 'claim') {
-            const { parshaIndex, donor, eventType, notes } = body;
+            const { parshaIndex, donor, additionalDonors, eventType, notes } = body;
             if (typeof parshaIndex !== 'number' || !donor) {
               return json({ ok: false, error: 'חסרים נתונים' }, 400, corsHeaders);
             }
@@ -99,6 +99,7 @@ export default {
               return json({ ok: false, error: 'הפרשה כבר תפוסה! תפס: ' + entry.donor }, 409, corsHeaders);
             }
             entry.donor = donor;
+            entry.additionalDonors = Array.isArray(additionalDonors) ? additionalDonors : [];
             entry.eventType = eventType || '';
             entry.notes = notes || '';
             entry.locked = true;
@@ -131,12 +132,14 @@ export default {
             }
             if (cancel) {
               entry.donor = '';
+              entry.additionalDonors = [];
               entry.eventType = '';
               entry.notes = '';
               entry.locked = false;
               entry.lockedAt = '';
             } else {
               if (typeof newDonor === 'string' && newDonor.trim()) entry.donor = newDonor.trim();
+              if (Array.isArray(body.additionalDonors)) entry.additionalDonors = body.additionalDonors;
               if (typeof eventType === 'string') entry.eventType = eventType;
               if (typeof notes === 'string') entry.notes = notes;
             }
@@ -162,12 +165,14 @@ export default {
             const entry = stored.entries[parshaIndex];
             if (unlock) {
               entry.donor = '';
+              entry.additionalDonors = [];
               entry.eventType = '';
               entry.notes = '';
               entry.locked = false;
               entry.lockedAt = '';
             } else {
               if (typeof donor === 'string') entry.donor = donor;
+              if (Array.isArray(body.additionalDonors)) entry.additionalDonors = body.additionalDonors;
               if (typeof eventType === 'string') entry.eventType = eventType;
               if (typeof notes === 'string') entry.notes = notes;
               entry.locked = Boolean(entry.donor);
