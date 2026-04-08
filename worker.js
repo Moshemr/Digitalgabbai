@@ -56,6 +56,100 @@ export default {
       }
     }
 
+    // =========================================
+    // HITVADUYOT (התוועדויות) API
+    // =========================================
+    if (url.pathname.startsWith('/api/hitvaduyot')) {
+      const kvKey = 'hitvaduyot_current';
+
+      try {
+        // GET — return all data
+        if (request.method === 'GET') {
+          const stored = await env.GABBAI_KV.get(kvKey, 'json');
+          return json({ ok: true, data: stored || null }, 200, corsHeaders);
+        }
+
+        if (request.method === 'POST') {
+          const body = await request.json();
+          const action = url.pathname.replace('/api/hitvaduyot', '').replace(/^\//, '') || body?.action;
+
+          // INIT — initialize year table (admin only)
+          if (action === 'init') {
+            const adminPass = env.GABBAI_ADMIN_PASS || 'chabad770';
+            if (body.password !== adminPass) {
+              return json({ ok: false, error: 'סיסמה שגויה' }, 403, corsHeaders);
+            }
+            const data = { year: body.year || '', entries: body.entries || [], updatedAt: new Date().toISOString() };
+            await env.GABBAI_KV.put(kvKey, JSON.stringify(data));
+            return json({ ok: true, saved: true }, 200, corsHeaders);
+          }
+
+          // CLAIM — claim a parsha (public, first come first served)
+          if (action === 'claim') {
+            const { parshaIndex, donor, eventType, notes } = body;
+            if (typeof parshaIndex !== 'number' || !donor) {
+              return json({ ok: false, error: 'חסרים נתונים' }, 400, corsHeaders);
+            }
+            const stored = await env.GABBAI_KV.get(kvKey, 'json');
+            if (!stored || !stored.entries || !stored.entries[parshaIndex]) {
+              return json({ ok: false, error: 'פרשה לא נמצאה' }, 404, corsHeaders);
+            }
+            const entry = stored.entries[parshaIndex];
+            if (entry.locked && entry.donor) {
+              return json({ ok: false, error: 'הפרשה כבר תפוסה! תפס: ' + entry.donor }, 409, corsHeaders);
+            }
+            entry.donor = donor;
+            entry.eventType = eventType || '';
+            entry.notes = notes || '';
+            entry.locked = true;
+            entry.lockedAt = new Date().toISOString();
+            stored.updatedAt = new Date().toISOString();
+            await env.GABBAI_KV.put(kvKey, JSON.stringify(stored));
+            return json({ ok: true, claimed: true, parsha: entry.parsha }, 200, corsHeaders);
+          }
+
+          // ADMIN — edit any entry (requires password)
+          if (action === 'admin') {
+            const adminPass = env.GABBAI_ADMIN_PASS || 'chabad770';
+            if (body.password !== adminPass) {
+              return json({ ok: false, error: 'סיסמה שגויה' }, 403, corsHeaders);
+            }
+            const stored = await env.GABBAI_KV.get(kvKey, 'json');
+            if (!stored || !stored.entries) {
+              return json({ ok: false, error: 'אין נתונים' }, 404, corsHeaders);
+            }
+            const { parshaIndex, donor, eventType, notes, unlock } = body;
+            if (typeof parshaIndex !== 'number' || !stored.entries[parshaIndex]) {
+              return json({ ok: false, error: 'פרשה לא נמצאה' }, 404, corsHeaders);
+            }
+            const entry = stored.entries[parshaIndex];
+            if (unlock) {
+              entry.donor = '';
+              entry.eventType = '';
+              entry.notes = '';
+              entry.locked = false;
+              entry.lockedAt = '';
+            } else {
+              if (typeof donor === 'string') entry.donor = donor;
+              if (typeof eventType === 'string') entry.eventType = eventType;
+              if (typeof notes === 'string') entry.notes = notes;
+              entry.locked = Boolean(entry.donor);
+              if (entry.donor && !entry.lockedAt) entry.lockedAt = new Date().toISOString();
+            }
+            stored.updatedAt = new Date().toISOString();
+            await env.GABBAI_KV.put(kvKey, JSON.stringify(stored));
+            return json({ ok: true, updated: true }, 200, corsHeaders);
+          }
+
+          return json({ ok: false, error: 'Unknown action' }, 400, corsHeaders);
+        }
+
+        return json({ ok: false, error: 'Method not allowed' }, 405, corsHeaders);
+      } catch (error) {
+        return json({ ok: false, error: error instanceof Error ? error.message : 'Unknown error' }, 500, corsHeaders);
+      }
+    }
+
     const assetResponse = await env.ASSETS.fetch(request);
     if (shouldBypassHtmlCache(url.pathname)) {
       return withHeaders(assetResponse, {
@@ -69,6 +163,7 @@ export default {
 function shouldBypassHtmlCache(pathname) {
   return pathname === '/' ||
     pathname === '/index.html' ||
+    pathname === '/hitvaduyot.html' ||
     pathname === '/Aliyot-Pro-CHABAD_Pro_DIGI_cloudflare_ready.html';
 }
 

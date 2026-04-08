@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>התוועדויות - בית חב״ד קרית רבין</title>
+  <style>
+    :root { --brand: #6b1c2a; --brand-light: #fdf2f4; --brand-border: #e8b4bc; --green: #16a34a; --green-bg: #dcfce7; --gray: #64748b; --border: #e2e8f0; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:#f8fafc; color:#0f172a; line-height:1.5; padding:0; }
+    .container { max-width:700px; margin:0 auto; padding:12px; }
+    header { background:var(--brand); color:white; text-align:center; padding:20px 16px 16px; position:relative; }
+    header .bsd { position:absolute; top:8px; right:12px; font-size:0.85rem; opacity:0.7; }
+    .logo { font-family:'Frank Ruhl Libre','David',serif; font-size:1.8rem; font-weight:900; letter-spacing:1px; }
+    .logo .bet { background:linear-gradient(160deg,#f5a623,#e8880c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    header h1 { font-size:1.2rem; font-weight:700; margin-top:6px; }
+    header p { font-size:0.82rem; opacity:0.8; margin-top:4px; }
+    .year-badge { display:inline-block; background:rgba(255,255,255,0.2); padding:2px 14px; border-radius:20px; font-size:0.85rem; font-weight:700; margin-top:8px; }
+    .admin-toggle { position:absolute; top:8px; left:12px; background:rgba(255,255,255,0.15); border:none; color:white; padding:4px 10px; border-radius:6px; font-size:0.75rem; cursor:pointer; }
+    .admin-toggle:hover { background:rgba(255,255,255,0.3); }
+    .admin-bar { background:#fef2f2; border:1px solid #fca5a5; padding:10px; margin:10px 0; border-radius:10px; display:none; }
+    .admin-bar.show { display:block; }
+    .admin-bar input { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; width:160px; }
+    .admin-bar button { padding:6px 14px; border:none; background:var(--brand); color:white; border-radius:6px; font-size:0.85rem; cursor:pointer; font-weight:700; }
+    .stats { display:flex; justify-content:center; gap:20px; padding:10px; background:white; border-radius:10px; margin:12px 0; border:1px solid var(--border); font-size:0.85rem; font-weight:600; }
+    .stat-taken { color:var(--brand); }
+    .stat-free { color:var(--green); }
+    table { width:100%; border-collapse:collapse; background:white; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+    th { background:var(--brand); color:white; padding:10px 8px; font-size:0.8rem; font-weight:700; text-align:center; white-space:nowrap; }
+    td { padding:8px 6px; border-bottom:1px solid #f1f5f9; font-size:0.85rem; text-align:center; vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr.taken { background:var(--brand-light); }
+    tr.taken td { color:#4a1520; }
+    .parsha-name { font-weight:800; color:var(--brand); font-size:0.95rem; }
+    .donor-name { font-weight:700; }
+    .event-badge { display:inline-block; background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px; font-size:0.7rem; font-weight:700; }
+    .lock-icon { font-size:0.75rem; }
+    .claim-btn { background:var(--green); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:0.8rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .claim-btn:hover { background:#15803d; }
+    .admin-edit-btn { background:none; border:1px solid var(--border); padding:3px 8px; border-radius:6px; cursor:pointer; font-size:0.75rem; }
+    .admin-edit-btn:hover { background:#f1f5f9; }
+    .notes-text { font-size:0.75rem; color:var(--gray); }
+    /* Claim modal */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center; padding:16px; }
+    .modal-overlay.show { display:flex; }
+    .modal { background:white; border-radius:16px; width:100%; max-width:400px; padding:24px; box-shadow:0 25px 50px rgba(0,0,0,0.25); }
+    .modal h2 { font-size:1.1rem; color:var(--brand); margin-bottom:4px; }
+    .modal .parsha-title { font-size:1.3rem; font-weight:800; color:var(--brand); margin-bottom:12px; }
+    .modal label { font-size:0.85rem; font-weight:700; display:block; margin-bottom:4px; margin-top:10px; }
+    .modal input, .modal select, .modal textarea { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem; font-family:inherit; }
+    .modal textarea { min-height:60px; resize:vertical; }
+    .modal-actions { display:flex; gap:8px; margin-top:16px; }
+    .modal-actions button { flex:1; padding:10px; border:none; border-radius:8px; font-size:0.95rem; font-weight:700; cursor:pointer; }
+    .btn-confirm { background:var(--green); color:white; }
+    .btn-cancel { background:#f1f5f9; color:var(--gray); }
+    .btn-unlock { background:#ef4444; color:white; }
+    .loading { text-align:center; padding:40px; color:var(--gray); font-size:1rem; }
+    .error-msg { background:#fef2f2; color:#991b1b; padding:10px; border-radius:8px; text-align:center; margin:10px 0; font-weight:600; }
+    .success-msg { background:#dcfce7; color:#166534; padding:10px; border-radius:8px; text-align:center; margin:10px 0; font-weight:600; }
+    .share-bar { text-align:center; margin:12px 0; }
+    .share-bar a { display:inline-flex; align-items:center; gap:6px; background:#25d366; color:white; padding:10px 20px; border-radius:50px; text-decoration:none; font-weight:700; font-size:0.9rem; }
+    .share-bar a:hover { background:#1ebe57; }
+    @media(max-width:500px) {
+      th, td { padding:6px 4px; font-size:0.78rem; }
+      .parsha-name { font-size:0.85rem; }
+      .claim-btn { padding:5px 10px; font-size:0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bsd">בס״ד</div>
+    <button class="admin-toggle" onclick="toggleAdmin()">ניהול</button>
+    <div class="logo"><span>ח</span><span class="bet">ב</span><span>״</span><span>ד</span></div>
+    <h1>התוועדויות - תרומות קידוש</h1>
+    <p>בית חב״ד קרית רבין • מגדל העמק</p>
+    <div class="year-badge" id="yearBadge">טוען...</div>
+  </header>
+
+  <div class="container">
+    <div class="admin-bar" id="adminBar">
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <input type="password" id="adminPass" placeholder="סיסמת מנהל">
+        <button onclick="loginAdmin()">כניסה</button>
+        <span id="adminStatus" style="font-size:0.8rem;"></span>
+        <button onclick="initYear()" style="background:#7c3aed; margin-right:8px;">אתחול שנה תשפ״ו</button>
+      </div>
+    </div>
+
+    <div id="msgArea"></div>
+
+    <div class="stats" id="statsBar">
+      <span class="stat-taken">תפוסות: <strong id="takenCount">0</strong></span>
+      <span class="stat-free">פנויות: <strong id="freeCount">0</strong></span>
+      <span>סה״כ: <strong id="totalCount">0</strong></span>
+    </div>
+
+    <div id="tableContainer"><div class="loading">🔄 טוען נתונים...</div></div>
+
+    <div class="share-bar">
+      <a id="shareLink" href="#" target="_blank">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:white;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        שתף בוואטסאפ
+      </a>
+    </div>
+  </div>
+
+  <!-- Claim / Edit Modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h2 id="modalTitle">תפוס פרשה</h2>
+      <div class="parsha-title" id="modalParsha"></div>
+      <label>שם התורם</label>
+      <input type="text" id="modalDonor" placeholder="השם שלך">
+      <label>סוג אירוע</label>
+      <select id="modalEventType">
+        <option value="">ללא ציון מיוחד</option>
+        <option value="יום הולדת">יום הולדת</option>
+        <option value="אזכרה">אזכרה / לע״נ</option>
+        <option value="לרפואת">לרפואת</option>
+        <option value="לזכות">לזכות</option>
+        <option value="בר מצוה">בר מצוה</option>
+        <option value="חתונה">חתונה</option>
+        <option value="בית כנסת">בית כנסת</option>
+        <option value="אחר">אחר</option>
+      </select>
+      <label>הערות</label>
+      <textarea id="modalNotes" placeholder="הערות נוספות (אופציונלי)"></textarea>
+      <div class="modal-actions" id="modalActions">
+        <button class="btn-confirm" onclick="submitClaim()">אישור</button>
+        <button class="btn-cancel" onclick="closeModal()">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/hitvaduyot';
+    let appData = null;
+    let isAdmin = false;
+    let adminPassword = '';
+    let currentEditIndex = -1;
+    let isEditMode = false;
+
+    async function fetchData() {
+      try {
+        const res = await fetch(API_BASE);
+        const json = await res.json();
+        if (json.ok && json.data) {
+          appData = json.data;
+          render();
+        } else {
+          document.getElementById('tableContainer').innerHTML = '<div class="loading">אין נתוני התוועדויות עדיין. המנהל צריך לאתחל את הטבלה.</div>';
+        }
+      } catch (e) {
+        document.getElementById('tableContainer').innerHTML = '<div class="error-msg">שגיאה בטעינת נתונים</div>';
+      }
+    }
+
+    function render() {
+      if (!appData || !appData.entries) return;
+      document.getElementById('yearBadge').textContent = appData.year || '';
+
+      const taken = appData.entries.filter(e => e.donor).length;
+      const free = appData.entries.length - taken;
+      document.getElementById('takenCount').textContent = taken;
+      document.getElementById('freeCount').textContent = free;
+      document.getElementById('totalCount').textContent = appData.entries.length;
+
+      const shareMsg = `התוועדויות ${appData.year || ''} - בית חב״ד קרית רבין\nבואו לתרום קידוש לשבת!\n${window.location.href}`;
+      document.getElementById('shareLink').href = `https://wa.me/?text=${encodeURIComponent(shareMsg)}`;
+
+      let html = `<table><thead><tr>
+        <th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th><th></th>
+      </tr></thead><tbody>`;
+
+      appData.entries.forEach((e, i) => {
+        const isTaken = Boolean(e.donor);
+        const rowClass = isTaken ? 'taken' : '';
+        const donorCell = isTaken
+          ? `<span class="donor-name">${e.donor}</span>${e.eventType ? `<br><span class="event-badge">${e.eventType}</span>` : ''}${e.notes ? `<br><span class="notes-text">${e.notes}</span>` : ''}`
+          : '';
+        const actionCell = isTaken
+          ? (isAdmin ? `<button class="admin-edit-btn" onclick="openEdit(${i})">✏️</button>` : `<span class="lock-icon">🔒</span>`)
+          : `<button class="claim-btn" onclick="openClaim(${i})">תפוס</button>`;
+
+        html += `<tr class="${rowClass}">
+          <td>${i + 1}</td>
+          <td class="parsha-name">${e.parsha}</td>
+          <td>${e.dateHe || ''}<br><span style="font-size:0.7rem;color:var(--gray);">${e.dateGreg || ''}</span></td>
+          <td>${donorCell}</td>
+          <td>${actionCell}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+      document.getElementById('tableContainer').innerHTML = html;
+    }
+
+    function toggleAdmin() {
+      document.getElementById('adminBar').classList.toggle('show');
+    }
+
+    function loginAdmin() {
+      adminPassword = document.getElementById('adminPass').value;
+      if (!adminPassword) return;
+      isAdmin = true;
+      document.getElementById('adminStatus').textContent = '✅ מחובר כמנהל';
+      document.getElementById('adminStatus').style.color = '#16a34a';
+      render();
+    }
+
+    function openClaim(index) {
+      currentEditIndex = index;
+      isEditMode = false;
+      const entry = appData.entries[index];
+      document.getElementById('modalTitle').textContent = 'תפוס פרשה';
+      document.getElementById('modalParsha').textContent = entry.parsha + (entry.dateHe ? ' • ' + entry.dateHe : '');
+      document.getElementById('modalDonor').value = '';
+      document.getElementById('modalEventType').value = '';
+      document.getElementById('modalNotes').value = '';
+      document.getElementById('modalDonor').readOnly = false;
+      document.getElementById('modalActions').innerHTML = `
+        <button class="btn-confirm" onclick="submitClaim()">אישור</button>
+        <button class="btn-cancel" onclick="closeModal()">ביטול</button>`;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function openEdit(index) {
+      currentEditIndex = index;
+      isEditMode = true;
+      const entry = appData.entries[index];
+      document.getElementById('modalTitle').textContent = 'עריכת מנהל';
+      document.getElementById('modalParsha').textContent = entry.parsha + (entry.dateHe ? ' • ' + entry.dateHe : '');
+      document.getElementById('modalDonor').value = entry.donor || '';
+      document.getElementById('modalEventType').value = entry.eventType || '';
+      document.getElementById('modalNotes').value = entry.notes || '';
+      document.getElementById('modalDonor').readOnly = false;
+      document.getElementById('modalActions').innerHTML = `
+        <button class="btn-confirm" onclick="submitAdmin()">שמור</button>
+        <button class="btn-unlock" onclick="submitUnlock()">פנה פרשה</button>
+        <button class="btn-cancel" onclick="closeModal()">ביטול</button>`;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('show');
+      currentEditIndex = -1;
+    }
+
+    async function submitClaim() {
+      const donor = document.getElementById('modalDonor').value.trim();
+      if (!donor) { alert('נא להזין שם'); return; }
+      const body = {
+        action: 'claim',
+        parshaIndex: currentEditIndex,
+        donor,
+        eventType: document.getElementById('modalEventType').value,
+        notes: document.getElementById('modalNotes').value.trim()
+      };
+      try {
+        const res = await fetch(API_BASE + '/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (json.ok) {
+          showMsg('success', `הפרשה נתפסה בהצלחה!`);
+          closeModal();
+          await fetchData();
+        } else {
+          showMsg('error', json.error || 'שגיאה');
+        }
+      } catch (e) {
+        showMsg('error', 'שגיאת רשת');
+      }
+    }
+
+    async function submitAdmin() {
+      const body = {
+        action: 'admin',
+        password: adminPassword,
+        parshaIndex: currentEditIndex,
+        donor: document.getElementById('modalDonor').value.trim(),
+        eventType: document.getElementById('modalEventType').value,
+        notes: document.getElementById('modalNotes').value.trim()
+      };
+      try {
+        const res = await fetch(API_BASE + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (json.ok) {
+          showMsg('success', 'עודכן בהצלחה');
+          closeModal();
+          await fetchData();
+        } else {
+          showMsg('error', json.error || 'שגיאה');
+        }
+      } catch (e) {
+        showMsg('error', 'שגיאת רשת');
+      }
+    }
+
+    async function submitUnlock() {
+      if (!confirm('לפנות את הפרשה? התורם יימחק.')) return;
+      const body = { action: 'admin', password: adminPassword, parshaIndex: currentEditIndex, unlock: true };
+      try {
+        const res = await fetch(API_BASE + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (json.ok) {
+          showMsg('success', 'הפרשה פונתה');
+          closeModal();
+          await fetchData();
+        } else {
+          showMsg('error', json.error || 'שגיאה');
+        }
+      } catch (e) {
+        showMsg('error', 'שגיאת רשת');
+      }
+    }
+
+    function showMsg(type, text) {
+      const el = document.getElementById('msgArea');
+      el.innerHTML = `<div class="${type === 'error' ? 'error-msg' : 'success-msg'}">${text}</div>`;
+      setTimeout(() => { el.innerHTML = ''; }, 4000);
+    }
+
+    async function initYear() {
+      if (!isAdmin || !adminPassword) { alert('נא להתחבר כמנהל'); return; }
+      if (!confirm('אתחול שנה חדשה? זה ימחק נתונים קיימים.')) return;
+
+      const entries = [
+        {parsha:"וילך",dateHe:"ה׳ תשרי",dateGreg:"27.09"},{parsha:"האזינו",dateHe:"י״ב תשרי",dateGreg:"4.10"},
+        {parsha:"שבת חול המועד",dateHe:"י״ט תשרי",dateGreg:"11.10"},{parsha:"בראשית",dateHe:"כ״ז תשרי",dateGreg:"18.10"},
+        {parsha:"נח",dateHe:"ג׳ חשוון",dateGreg:"25.10"},{parsha:"לך לך",dateHe:"י׳ חשוון",dateGreg:"1.11"},
+        {parsha:"וירא",dateHe:"י״ז חשוון",dateGreg:"8.11"},{parsha:"חיי שרה",dateHe:"כ״ד חשוון",dateGreg:"15.11"},
+        {parsha:"תולדות",dateHe:"ב׳ כסלו",dateGreg:"22.11"},{parsha:"ויצא",dateHe:"ט׳ כסלו",dateGreg:"29.11"},
+        {parsha:"וישלח",dateHe:"ט״ז כסלו",dateGreg:"6.12"},{parsha:"וישב",dateHe:"כ״ג כסלו",dateGreg:"13.12"},
+        {parsha:"מקץ",dateHe:"ל׳ כסלו",dateGreg:"20.12"},{parsha:"ויגש",dateHe:"ז׳ טבת",dateGreg:"27.12"},
+        {parsha:"ויחי",dateHe:"י״ד טבת",dateGreg:"3.01"},{parsha:"שמות",dateHe:"כ״א טבת",dateGreg:"10.01"},
+        {parsha:"וארא",dateHe:"כ״ח טבת",dateGreg:"17.01"},{parsha:"בא",dateHe:"א׳ שבט",dateGreg:"24.01"},
+        {parsha:"בשלח",dateHe:"י״ג שבט",dateGreg:"31.01"},{parsha:"יתרו",dateHe:"כ׳ שבט",dateGreg:"7.02"},
+        {parsha:"משפטים",dateHe:"כ״ז שבט",dateGreg:"14.02"},{parsha:"תרומה",dateHe:"ד׳ אדר",dateGreg:"21.02"},
+        {parsha:"תצוה",dateHe:"י״א אדר",dateGreg:"28.02"},{parsha:"כי תשא",dateHe:"י״ח אדר",dateGreg:"7.03"},
+        {parsha:"ויקהל פקודי",dateHe:"כ״ה אדר",dateGreg:"14.03"},{parsha:"ויקרא",dateHe:"ג׳ ניסן",dateGreg:"21.03"},
+        {parsha:"צו",dateHe:"י׳ ניסן",dateGreg:"28.03"},{parsha:"שמיני",dateHe:"כ״ד ניסן",dateGreg:"11.04"},
+        {parsha:"תזריע מצורע",dateHe:"א׳ אייר",dateGreg:"18.04"},{parsha:"אחרי קדושים",dateHe:"ח׳ אייר",dateGreg:"25.04"},
+        {parsha:"אמור",dateHe:"ט״ו אייר",dateGreg:"2.05"},{parsha:"בהר בחוקותי",dateHe:"כ״ב אייר",dateGreg:"9.05"},
+        {parsha:"במדבר",dateHe:"כ״ט אייר",dateGreg:"16.05"},{parsha:"נשא",dateHe:"ז׳ סיוון",dateGreg:"23.05"},
+        {parsha:"בהעלותך",dateHe:"י״ד סיוון",dateGreg:"30.05"},{parsha:"שלח",dateHe:"כ״א סיוון",dateGreg:"6.06"},
+        {parsha:"קרח",dateHe:"כ״ח סיוון",dateGreg:"13.06"},{parsha:"חקת",dateHe:"ה׳ תמוז",dateGreg:"20.06"},
+        {parsha:"בלק",dateHe:"י״ב תמוז",dateGreg:"27.06"},{parsha:"פנחס",dateHe:"י״ט תמוז",dateGreg:"4.07"},
+        {parsha:"מטות מסעי",dateHe:"כ״ו תמוז",dateGreg:"11.07"},{parsha:"דברים",dateHe:"ד׳ אב",dateGreg:"18.07"},
+        {parsha:"ואתחנן",dateHe:"י״א אב",dateGreg:"25.07"},{parsha:"עקב",dateHe:"י״ח אב",dateGreg:"1.08"},
+        {parsha:"ראה",dateHe:"כ״ה אב",dateGreg:"8.08"},{parsha:"שופטים",dateHe:"ב׳ אלול",dateGreg:"15.08"},
+        {parsha:"כי תצא",dateHe:"ט׳ אלול",dateGreg:"22.08"},{parsha:"כי תבוא",dateHe:"ט״ז אלול",dateGreg:"29.08"},
+        {parsha:"ניצבים וילך",dateHe:"כ״ג אלול",dateGreg:"5.09"}
+      ].map(e => ({ ...e, donor:'', eventType:'', notes:'', locked:false, lockedAt:'', additionalDonors:[] }));
+
+      const body = { action:'init', password:adminPassword, year:'תשפ״ו', entries };
+      try {
+        const res = await fetch(API_BASE + '/init', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+        const json = await res.json();
+        if (json.ok) { showMsg('success','טבלת השנה אותחלה!'); await fetchData(); }
+        else showMsg('error', json.error);
+      } catch(e) { showMsg('error','שגיאת רשת'); }
+    }
+
+    // Init
+    fetchData();
+    // Auto-refresh every 30 seconds
+    setInterval(fetchData, 30000);
+  </script>
+</body>
+</html>
