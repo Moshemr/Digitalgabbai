@@ -3758,6 +3758,14 @@
             delete att[oldName];
             localStorage.setItem('gabbai_attendance', JSON.stringify(att));
           }
+          // עדכן יארצייט
+          const yz = getYahrzeitsMap();
+          if (yz[oldName]) {
+            if (!yz[newName]) yz[newName] = yz[oldName];
+            else yz[newName] = [...yz[newName], ...yz[oldName]];
+            delete yz[oldName];
+            saveYahrzeitsMap(yz);
+          }
           saveData(data);
           renderUI();
         }
@@ -5126,6 +5134,7 @@
         data.tags = JSON.parse(localStorage.getItem('gabbai_tags') || '{}');
         data.guestMembers = JSON.parse(localStorage.getItem('gabbai_guest_members') || '{}');
         data.fixedMembers = JSON.parse(localStorage.getItem('gabbai_fixed_members') || '{}');
+        data.yahrzeits = JSON.parse(localStorage.getItem('gabbai_yahrzeits') || '{}');
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], {type: "application/json"});
         const url = URL.createObjectURL(blob);
@@ -5173,6 +5182,10 @@
                     if (data.fixedMembers) {
                       localStorage.setItem('gabbai_fixed_members', JSON.stringify(data.fixedMembers));
                       delete data.fixedMembers;
+                    }
+                    if (data.yahrzeits) {
+                      localStorage.setItem('gabbai_yahrzeits', JSON.stringify(data.yahrzeits));
+                      delete data.yahrzeits;
                     }
                     // סנכרן ספירות עליות מההיסטוריה
                     const actualCounts = {};
@@ -5250,6 +5263,7 @@
             localStorage.removeItem('gabbai_attendance');
             localStorage.removeItem('gabbai_notes');
             localStorage.removeItem('gabbai_tags');
+            localStorage.removeItem('gabbai_yahrzeits');
             location.reload();
         }
     }
