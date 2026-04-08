@@ -242,9 +242,21 @@
 
       // Admin share bar — encourage donations for unclaimed parshas
       const adminShareEl = document.getElementById('adminShareBar');
-      if (isAdmin && free > 0) {
-        adminShareEl.style.display = 'block';
-        adminShareEl.innerHTML = `<button onclick="shareUnclaimed()" style="width:100%; padding:10px; background:var(--brand); color:white; border:none; border-radius:10px; font-size:0.92rem; font-weight:700; cursor:pointer;">📣 שלח תזכורת לקבוצה — ${free} שבתות ממתינות לתורמים</button>`;
+      if (isAdmin) {
+        const nextEntry = getNextShabbatEntry();
+        let btns = '';
+        if (free > 0) {
+          btns += `<button onclick="shareUnclaimed()" style="width:100%; padding:10px; background:var(--brand); color:white; border:none; border-radius:10px; font-size:0.88rem; font-weight:700; cursor:pointer; margin-bottom:6px;">📣 תזכורת לקבוצה — ${free} שבתות ממתינות</button>`;
+        }
+        if (nextEntry) {
+          btns += `<button onclick="sendShoppingReminder()" style="width:100%; padding:10px; background:#25d366; color:white; border:none; border-radius:10px; font-size:0.88rem; font-weight:700; cursor:pointer;">🛒 שלח רשימת קניות ל${nextEntry.donor} (${nextEntry.parsha})</button>`;
+        }
+        if (btns) {
+          adminShareEl.style.display = 'block';
+          adminShareEl.innerHTML = btns;
+        } else {
+          adminShareEl.style.display = 'none';
+        }
       } else {
         adminShareEl.style.display = 'none';
       }
@@ -318,6 +330,77 @@
         msg += `${idx + 1}. ${e.parsha} — ${e.dateHe || ''} (${e.dateGreg || ''})\n`;
       });
       msg += `\n👈 לתפיסת שבת:\n${window.location.href}`;
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function getNextShabbatEntry() {
+      if (!appData || !appData.entries) return null;
+      // Find next claimed entry by date (dateGreg format: DD.MM)
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      for (const e of appData.entries) {
+        if (!e.donor || !e.dateGreg) continue;
+        const [day, month] = e.dateGreg.split('.').map(Number);
+        if (!day || !month) continue;
+        // Guess year: if month < current month-1, it's next year
+        let year = currentYear;
+        if (month < now.getMonth()) year = currentYear + 1;
+        const entryDate = new Date(year, month - 1, day);
+        if (entryDate >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)) {
+          return e;
+        }
+      }
+      return null;
+    }
+
+    function sendShoppingReminder() {
+      const entry = getNextShabbatEntry();
+      if (!entry) { alert('לא נמצאה שבת קרובה עם תורם'); return; }
+
+      const partners = (entry.additionalDonors || []).length
+        ? ` ושותפים: ${entry.additionalDonors.join(', ')}` : '';
+
+      let msg = `שלום *${entry.donor}*${partners},\n\n`;
+      msg += `ראשית ישר כח גדול על נטילת חלק בשותפות הקהילה! 🙏\n\n`;
+      msg += `🕯️ *תזכורת: התוועדות שבת פרשת ${entry.parsha}*\n`;
+      msg += `📅 ${entry.dateHe || ''} (${entry.dateGreg || ''})\n`;
+      if (entry.eventType) msg += `🎉 ${entry.eventType}${entry.notes ? ' — ' + entry.notes : ''}\n`;
+      msg += `\n`;
+      msg += `מצו״ב רשימה בסיסית לקניות הקידוש:\n`;
+      msg += `(כמות ל-60 איש בערך)\n\n`;
+
+      msg += `*🍽️ חד פעמי:*\n`;
+      msg += `• שרוול כוסות\n`;
+      msg += `• 12 מפות ניילון\n`;
+      msg += `• צלוחיות לסלטים\n`;
+      msg += `• צלחות שטוחות\n`;
+      msg += `• חבילת מזלגות\n\n`;
+
+      msg += `*🥤 שתיה:*\n`;
+      msg += `• שישית מים\n`;
+      msg += `• שישית ספרייט\n`;
+      msg += `• שישית סודה\n`;
+      msg += `• שישיה שתיה מתוקה\n\n`;
+
+      msg += `*🥗 סלטים (1 ק״ג מכל אחד):*\n`;
+      msg += `• טחינה, חצילים, חומוס (2 ק״ג)\n`;
+      msg += `• 6-8 טונה\n`;
+      msg += `• 2-3 תירס\n`;
+      msg += `• 2-3 חמוצים\n`;
+      msg += `• קרקרים 2 ק״ג\n\n`;
+
+      msg += `*🍷 שתיה חריפה:*\n`;
+      msg += `• יין\n`;
+      msg += `• 2 שישיות בירה\n`;
+      msg += `• 2 ארק / 1 וויסקי\n\n`;
+
+      msg += `*🍿 חטיפים למלא שולחן:*\n`;
+      msg += `• ציפס, במבה, ביסלי, אפרופו, דובונים, ביגלה וכדו׳\n\n`;
+
+      msg += `⚠️ *חשוב מאוד:* כשרות בד״ץ העדה החרדית או הרב לנדאו בלבד!\n\n`;
+      msg += `ישר כח גדול! 💪\n`;
+      msg += `בית חב״ד קרית רבין • מגדל העמק`;
 
       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
     }
