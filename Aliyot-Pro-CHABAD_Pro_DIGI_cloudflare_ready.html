@@ -507,10 +507,11 @@
       .tab-icon-svg { width: 22px; height: 22px; margin: 0 0 2px 0; }
       .tab-label { font-size: 0.58rem; font-weight: 700; }
       .tab-btn[aria-selected="true"] {
-        background: #eef2ff;
-        color: var(--primary);
+        background: #6b1c2a;
+        color: white;
         border-radius: 8px;
       }
+      .tab-btn[aria-selected="true"] .tab-icon-svg { stroke: white; }
 
       /* ---- Cards ---- */
       .card { padding: 12px; margin-bottom: 10px; border-radius: 12px; }
@@ -973,10 +974,22 @@
         </div>
         <div class="card" style="margin-top:20px;">
           <h2>💡 המלצות חכמות לשיבוץ</h2>
-          <p style="color: var(--text-muted); margin-bottom: 20px;">המערכת ממליצה על מתפללים בעדיפות גבוהה לפי מספר העליות (רק מתפללים פעילים)</p>
-          <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+          <p style="color: var(--text-muted); margin-bottom: 12px;">המערכת ממליצה על מתפללים בעדיפות גבוהה לפי מספר העליות (רק מתפללים פעילים)</p>
+          <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
             <button class="btn btn-success" onclick="sendRecsToWhatsApp()" style="background:#25d366; font-size:1rem;">📱 שלח המלצות לרב בוואטסאפ</button>
             <button class="btn btn-secondary" onclick="copyRecsToClipboard()" style="font-size:1rem;">📋 העתק לקליפבורד</button>
+          </div>
+          <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+            <input type="text" id="recSearch" placeholder="🔍 חיפוש שם..." class="form-control"
+                   style="flex:1; min-width:140px;" oninput="renderRecList()">
+            <select id="recSort" class="form-control" style="flex:0 0 auto; min-width:130px;" onchange="renderRecList()">
+              <option value="priority">לפי עדיפות</option>
+              <option value="name-asc">א-ב (א→ת)</option>
+              <option value="name-desc">א-ב (ת→א)</option>
+              <option value="aliyot-asc">עליות (מעט→הרבה)</option>
+              <option value="aliyot-desc">עליות (הרבה→מעט)</option>
+              <option value="weeks-desc">זמן ללא עליה (הרבה→מעט)</option>
+            </select>
           </div>
           <div class="member-list" id="recList"></div>
         </div>
@@ -1972,7 +1985,8 @@
       // Lists
       renderMemberList(stats.top.slice(0, 5), 'topMembersList', true);
       renderMemberList(stats.recs.slice(0, 5), 'urgentMembersList', false);
-      renderMemberList(stats.recs, 'recList', false, true);
+      _cachedRecs = stats.recs;
+      renderRecList();
       renderLongAbsentTab();
       renderMembersTab();
       // AI Insights
@@ -2574,6 +2588,61 @@
            <div class="member-left">
               <span>${m.lastAliyah ? 'אחרונה: ' + lastAliyahDisplay(m.lastAliyah) : 'טרם עלה'}</span>
               ${showAssign ? `<button class="btn-icon-small" onclick="assignMember('${esc}')" title="שבץ לעלייה" aria-label="שבץ">➕</button>` : ''}
+           </div>
+        </div>`;
+      }).join('');
+    }
+
+    let _cachedRecs = [];
+    function renderRecList() {
+      const search = (document.getElementById('recSearch')?.value || '').trim().toLowerCase();
+      const sort = document.getElementById('recSort')?.value || 'priority';
+      const data = loadData();
+
+      let list = [..._cachedRecs];
+
+      // Filter by search
+      if (search) {
+        list = list.filter(m => m.name.toLowerCase().includes(search));
+      }
+
+      // Sort
+      if (sort === 'name-asc') {
+        list.sort((a, b) => a.name.localeCompare(b.name, 'he'));
+      } else if (sort === 'name-desc') {
+        list.sort((a, b) => b.name.localeCompare(a.name, 'he'));
+      } else if (sort === 'aliyot-asc') {
+        list.sort((a, b) => a.aliyot - b.aliyot || a.name.localeCompare(b.name, 'he'));
+      } else if (sort === 'aliyot-desc') {
+        list.sort((a, b) => b.aliyot - a.aliyot || a.name.localeCompare(b.name, 'he'));
+      } else if (sort === 'weeks-desc') {
+        list.sort((a, b) => {
+          const idxA = getHistoryIndexByLastAliyah(a.lastAliyah, data.history);
+          const idxB = getHistoryIndexByLastAliyah(b.lastAliyah, data.history);
+          const wA = idxA < 0 ? 999 : idxA;
+          const wB = idxB < 0 ? 999 : idxB;
+          return wB - wA || a.aliyot - b.aliyot;
+        });
+      }
+      // 'priority' = default order from getStats
+
+      const countHtml = `<div style="text-align:center; font-size:0.82rem; color:var(--text-muted); margin-bottom:8px; font-weight:600;">מציג ${list.length} מתוך ${_cachedRecs.length} מתפללים</div>`;
+      const el = document.getElementById('recList');
+      if (!list.length) {
+        el.innerHTML = countHtml + '<div style="text-align:center; padding:10px; color:#94a3b8;">לא נמצאו תוצאות</div>';
+        return;
+      }
+      el.innerHTML = countHtml + list.map(m => {
+        const esc = m.name.replace(/'/g, "\\'");
+        return `
+        <div class="member-item">
+           <div class="member-right">
+              <div class="badge-circle ${m.aliyot === 0 ? 'bg-red' : m.aliyot <= 2 ? 'bg-orange' : 'bg-green'}">${m.aliyot}</div>
+              <div class="member-name clickable-name" onclick="openProfile('${esc}')">${m.name}</div>
+           </div>
+           <div class="member-left">
+              <span>${m.lastAliyah ? 'אחרונה: ' + lastAliyahDisplay(m.lastAliyah) : 'טרם עלה'}</span>
+              <button class="btn-icon-small" onclick="assignMember('${esc}')" title="שבץ לעלייה" aria-label="שבץ">➕</button>
            </div>
         </div>`;
       }).join('');
