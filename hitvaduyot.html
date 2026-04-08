@@ -67,30 +67,33 @@
     }
     /* ===== PRINT / PDF STYLES ===== */
     @media print {
-      @page { size: A4 portrait; margin: 6mm 7mm; }
-      body { background: white; color: black; padding: 0; font-size: 7pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      header { background: #6b1c2a !important; color: white !important; padding: 6px 10px; border-radius: 0; page-break-after: avoid; }
-      .admin-toggle, .admin-bar, .share-bar, .modal-overlay, #hitSearch, #hitFilter, #adminShareBar, #msgArea, .claim-btn, .admin-edit-btn, .lock-icon, .stats, .no-print { display: none !important; }
-      .container { max-width: 100%; padding: 0; }
-      .logo { font-size: 1.4rem; }
-      .logo + h1 { margin-top: 1px; }
-      header h1 { font-size: 0.85rem; margin-top: 2px; }
-      header p { font-size: 0.65rem; margin-top: 1px; }
-      .year-badge { background: rgba(255,255,255,0.25) !important; font-size: 0.7rem; padding: 1px 8px; margin-top: 2px; }
-      .bsd { color: white !important; opacity: 0.8; font-size: 0.7rem; top: 4px; right: 6px; }
-      .print-header { display: block !important; text-align: center; padding: 2px 0; font-size: 7pt; color: #333; border-bottom: 1.5px solid #6b1c2a; margin-bottom: 2px; }
-      table { width: 100%; border-collapse: collapse; font-size: 7pt; box-shadow: none; border-radius: 0; }
-      th { background: #6b1c2a !important; color: white !important; padding: 2px 3px; font-size: 6.5pt; border: 0.5px solid #999; line-height: 1.2; }
-      td { padding: 1.5px 3px; border: 0.5px solid #ccc; font-size: 7pt; line-height: 1.25; }
-      tr.taken { background: #fdf2f4 !important; }
-      .parsha-name { font-size: 7.5pt; color: #6b1c2a !important; }
-      .donor-name { font-size: 7pt; }
-      .event-badge { background: #fef3c7 !important; border: 0.5px solid #d4a017; font-size: 5.5pt; padding: 0 3px; }
-      .notes-text { font-size: 5.5pt; }
-      td span[style*="font-size:0.65rem"], td span[style*="font-size:0.7rem"] { display: none !important; }
-      td span[style*="font-size:0.75rem"] { font-size: 6pt !important; }
-      .print-footer { display: block !important; text-align: center; margin-top: 3px; font-size: 6.5pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 2px; }
+      @page { size: A4 portrait; margin: 5mm; }
+      body > *:not(#printPage) { display: none !important; }
+      #printPage { display: block !important; }
     }
+    #printPage { display: none; }
+    #printPage * { box-sizing: border-box; }
+    #printPage .p-wrap { width: 200mm; margin: 0 auto; direction: rtl; font-family: 'Segoe UI', system-ui, sans-serif; color: #000; }
+    #printPage .p-header { background: #6b1c2a; color: white; text-align: center; padding: 6px 10px; border-radius: 0; display: flex; align-items: center; justify-content: center; gap: 12px; }
+    #printPage .p-logo { display: flex; flex-direction: column; align-items: center; }
+    #printPage .p-logo-text { font-family: 'Frank Ruhl Libre','David',serif; font-size: 22pt; font-weight: 900; letter-spacing: 1px; line-height: 1; }
+    #printPage .p-logo-text .bet { color: #f5a623; }
+    #printPage .p-logo-slogan { font-size: 6pt; opacity: 0.8; }
+    #printPage .p-title { font-size: 11pt; font-weight: 700; }
+    #printPage .p-sub { font-size: 7pt; opacity: 0.8; }
+    #printPage .p-bsd { position: absolute; top: 3px; right: 8px; font-size: 8pt; }
+    #printPage .p-stats { text-align: center; font-size: 7pt; padding: 2px 0; border-bottom: 1px solid #6b1c2a; margin-bottom: 2px; color: #333; }
+    #printPage .p-cols { display: flex; gap: 4px; }
+    #printPage .p-col { flex: 1; }
+    #printPage table { width: 100%; border-collapse: collapse; }
+    #printPage th { background: #6b1c2a; color: white; font-size: 6pt; padding: 2px 2px; border: 0.5px solid #999; text-align: center; }
+    #printPage td { font-size: 6.5pt; padding: 1.5px 2px; border: 0.5px solid #ccc; text-align: center; line-height: 1.2; }
+    #printPage tr.tk { background: #fdf2f4; }
+    #printPage .pn { font-weight: 800; color: #6b1c2a; font-size: 7pt; }
+    #printPage .dn { font-weight: 700; font-size: 6.5pt; }
+    #printPage .ev { background: #fef3c7; font-size: 5pt; padding: 0 2px; border-radius: 2px; }
+    #printPage .prt { font-size: 5.5pt; color: #6b1c2a; }
+    #printPage .p-footer { text-align: center; font-size: 6pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 2px; margin-top: 2px; }
     .print-header, .print-footer { display: none; }
   </style>
 </head>
@@ -140,7 +143,7 @@
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:white;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         שתף בוואטסאפ
       </a>
-      <button onclick="window.print()" style="display:inline-flex; align-items:center; gap:6px; background:var(--brand); color:white; padding:10px 20px; border-radius:50px; border:none; font-weight:700; font-size:0.9rem; cursor:pointer;">
+      <button onclick="printPDF()" style="display:inline-flex; align-items:center; gap:6px; background:var(--brand); color:white; padding:10px 20px; border-radius:50px; border:none; font-weight:700; font-size:0.9rem; cursor:pointer;">
         <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:white;stroke-width:2;"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         הורד PDF / הדפס
       </button>
@@ -353,6 +356,54 @@
         }
       }
       return null;
+    }
+
+    function printPDF() {
+      if (!appData || !appData.entries) { alert('אין נתונים'); return; }
+      const entries = appData.entries;
+      const taken = entries.filter(e => e.donor).length;
+      const free = entries.length - taken;
+      const mid = Math.ceil(entries.length / 2);
+      const col1 = entries.slice(0, mid);
+      const col2 = entries.slice(mid);
+
+      function buildCol(arr, startIdx) {
+        let h = `<table><thead><tr><th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th></tr></thead><tbody>`;
+        arr.forEach((e, i) => {
+          const idx = startIdx + i + 1;
+          const cls = e.donor ? ' class="tk"' : '';
+          const partners = (e.additionalDonors || []).length ? `<br><span class="prt">+ ${e.additionalDonors.join(', ')}</span>` : '';
+          const evBadge = e.eventType ? `<br><span class="ev">${e.eventType}</span>` : '';
+          const donor = e.donor ? `<span class="dn">${e.donor}</span>${partners}${evBadge}` : '';
+          h += `<tr${cls}><td>${idx}</td><td class="pn">${e.parsha}</td><td>${e.dateHe || ''}</td><td>${donor}</td></tr>`;
+        });
+        h += '</tbody></table>';
+        return h;
+      }
+
+      const pp = document.getElementById('printPage');
+      pp.innerHTML = `
+        <div class="p-wrap" style="position:relative;">
+          <div class="p-header" style="position:relative;">
+            <span class="p-bsd">בס"ד</span>
+            <div class="p-logo">
+              <div class="p-logo-text"><span>ח</span><span class="bet">ב</span><span>"</span><span>ד</span></div>
+              <div class="p-logo-slogan">כל הלב לכל אחד</div>
+            </div>
+            <div>
+              <div class="p-title">התוועדויות - תרומות קידוש</div>
+              <div class="p-sub">בית חב"ד קרית רבין - מגדל העמק | ${appData.year || ''}</div>
+            </div>
+          </div>
+          <div class="p-stats">תפוסות: ${taken} | פנויות: ${free} | סה"כ: ${entries.length} | הודפס: ${new Date().toLocaleDateString('he-IL')}</div>
+          <div class="p-cols">
+            <div class="p-col">${buildCol(col1, 0)}</div>
+            <div class="p-col">${buildCol(col2, mid)}</div>
+          </div>
+          <div class="p-footer">בית חב"ד קרית רבין - מגדל העמק - כל הלב לכל אחד</div>
+        </div>`;
+
+      setTimeout(() => window.print(), 100);
     }
 
     function sendShoppingReminder() {
@@ -695,5 +746,6 @@
     // Auto-refresh every 30 seconds
     setInterval(fetchData, 30000);
   </script>
+  <div id="printPage"></div>
 </body>
 </html>
