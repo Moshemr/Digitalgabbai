@@ -31,6 +31,49 @@
       line-height: 1.5;
     }
     .container { max-width: 1200px; margin: 0 auto; }
+    /* Chabad Logo */
+    .chabad-logo {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      background: #6b1c2a;
+      padding: 10px 22px 8px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      position: relative;
+      box-shadow: 0 2px 8px rgba(107,28,42,0.25);
+    }
+    .chabad-text {
+      font-family: 'Frank Ruhl Libre', 'David', 'SBL Hebrew', serif;
+      font-size: 2.2rem;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: 2px;
+      color: white;
+      display: flex;
+      align-items: baseline;
+    }
+    .chabad-bet {
+      background: linear-gradient(160deg, #f5a623 0%, #e8880c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .chabad-quote {
+      font-size: 1.2rem;
+      color: white;
+      margin: 0 1px;
+      align-self: flex-start;
+      position: relative;
+      top: -2px;
+    }
+    .chabad-slogan {
+      font-family: 'Frank Ruhl Libre', 'David', 'SBL Hebrew', serif;
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.85);
+      letter-spacing: 1.5px;
+      margin-top: 2px;
+    }
     /* Header */
     header {
       background: var(--bg-card);
@@ -386,9 +429,12 @@
 
       /* ---- Header: compact ---- */
       header { padding: 12px; margin-bottom: 10px; border-top-width: 4px; }
-      .brand-title { font-size: 1.3rem; margin-bottom: 2px; }
-      .brand-subtitle { font-size: 0.82rem; flex-wrap: wrap; gap: 4px; }
-      .ai-badge { font-size: 0.72rem; padding: 2px 8px; }
+      .chabad-logo { padding: 7px 16px 6px; margin-bottom: 6px; border-radius: 8px; }
+      .chabad-text { font-size: 1.6rem; }
+      .chabad-quote { font-size: 0.9rem; }
+      .chabad-slogan { font-size: 0.55rem; }
+      .brand-title { font-size: 1.15rem; margin-bottom: 2px; }
+      .brand-subtitle { font-size: 0.8rem; flex-wrap: wrap; gap: 4px; }
 
       /* ---- Zmanim: wrap into mini-cards ---- */
       .zmanim-bar {
@@ -695,13 +741,16 @@
   <div class="container">
     <header style="position:relative;">
       <div style="position:absolute; top:10px; right:14px; font-family:'SBL Hebrew','David',serif; font-size:0.95rem; font-weight:700; color:var(--text-muted);">בס״ד</div>
-      <div class="brand-title">🤖 הגבאי הדיגיטלי AI</div>
+      <div class="chabad-logo" aria-label="חב״ד — כל הלב לכל אחד">
+        <span class="chabad-text"><span class="chabad-het">ח</span><span class="chabad-bet">ב</span><span class="chabad-quote">״</span><span class="chabad-dalet">ד</span></span>
+        <span class="chabad-slogan">כל הלב לכל אחד</span>
+      </div>
+      <div class="brand-title">הגבאי הדיגיטלי</div>
       <div class="brand-subtitle">
         בית חב״ד קרית רבין • מגדל העמק
-        <span class="ai-badge">🧠 מופעל AI</span>
         <span id="backupIndicator" class="backup-indicator" title="סטטוס גיבוי"></span>
       </div>
-      <div style="margin-top:8px; font-size:0.78rem; color:#78716c; font-weight:500; letter-spacing:0.2px;">
+      <div style="margin-top:6px; font-size:0.75rem; color:#78716c; font-weight:500; letter-spacing:0.2px;">
         🕯️ לעילוי נשמת יפה בת דבורה ז״ל • רחמים בן ממה ז״ל 🕯️
       </div>
       <div class="zmanim-bar" aria-label="זמני היום">
