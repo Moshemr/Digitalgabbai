@@ -108,6 +108,43 @@ export default {
             return json({ ok: true, claimed: true, parsha: entry.parsha }, 200, corsHeaders);
           }
 
+          // EDIT — donor self-edit within 10-minute window
+          if (action === 'edit') {
+            const { parshaIndex, donor, newDonor, eventType, notes, cancel } = body;
+            if (typeof parshaIndex !== 'number' || !donor) {
+              return json({ ok: false, error: 'חסרים נתונים' }, 400, corsHeaders);
+            }
+            const stored = await env.GABBAI_KV.get(kvKey, 'json');
+            if (!stored || !stored.entries || !stored.entries[parshaIndex]) {
+              return json({ ok: false, error: 'פרשה לא נמצאה' }, 404, corsHeaders);
+            }
+            const entry = stored.entries[parshaIndex];
+            // Verify donor match
+            if (entry.donor !== donor) {
+              return json({ ok: false, error: 'אין הרשאה — השם לא תואם' }, 403, corsHeaders);
+            }
+            // Verify 10-minute window
+            const lockedTime = entry.lockedAt ? new Date(entry.lockedAt).getTime() : 0;
+            const elapsed = Date.now() - lockedTime;
+            if (elapsed > 10 * 60 * 1000) {
+              return json({ ok: false, error: 'חלון העריכה נסגר (10 דקות). פנה לרב לשינויים.' }, 403, corsHeaders);
+            }
+            if (cancel) {
+              entry.donor = '';
+              entry.eventType = '';
+              entry.notes = '';
+              entry.locked = false;
+              entry.lockedAt = '';
+            } else {
+              if (typeof newDonor === 'string' && newDonor.trim()) entry.donor = newDonor.trim();
+              if (typeof eventType === 'string') entry.eventType = eventType;
+              if (typeof notes === 'string') entry.notes = notes;
+            }
+            stored.updatedAt = new Date().toISOString();
+            await env.GABBAI_KV.put(kvKey, JSON.stringify(stored));
+            return json({ ok: true, updated: true, cancelled: Boolean(cancel) }, 200, corsHeaders);
+          }
+
           // ADMIN — edit any entry (requires password)
           if (action === 'admin') {
             const adminPass = env.GABBAI_ADMIN_PASS || 'chabad770';

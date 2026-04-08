@@ -150,6 +150,25 @@
     let adminPassword = '';
     let currentEditIndex = -1;
     let isEditMode = false;
+    const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+    function getMyClaims() {
+      try { return JSON.parse(sessionStorage.getItem('myClaimedParshas') || '[]'); } catch(e) { return []; }
+    }
+    function saveMyClaim(parshaIndex, donor) {
+      const claims = getMyClaims();
+      claims.push({ parshaIndex, donor, claimedAt: Date.now() });
+      sessionStorage.setItem('myClaimedParshas', JSON.stringify(claims));
+    }
+    function removeMyClaim(parshaIndex) {
+      const claims = getMyClaims().filter(c => c.parshaIndex !== parshaIndex);
+      sessionStorage.setItem('myClaimedParshas', JSON.stringify(claims));
+    }
+    function isMyEditableEntry(parshaIndex, donor) {
+      const claim = getMyClaims().find(c => c.parshaIndex === parshaIndex && c.donor === donor);
+      if (!claim) return false;
+      return (Date.now() - claim.claimedAt) < EDIT_WINDOW_MS;
+    }
 
     async function fetchData() {
       try {
@@ -216,9 +235,17 @@
         const donorCell = isTaken
           ? `<span class="donor-name">${e.donor}</span>${e.eventType ? `<br><span class="event-badge">${e.eventType}</span>` : ''}${e.notes ? `<br><span class="notes-text">${e.notes}</span>` : ''}`
           : '';
-        const actionCell = isTaken
-          ? (isAdmin ? `<button class="admin-edit-btn" onclick="openEdit(${i})">✏️</button>` : `<span class="lock-icon">🔒</span>`)
-          : `<button class="claim-btn" onclick="openClaim(${i})">תפוס</button>`;
+        const canSelfEdit = isTaken && isMyEditableEntry(i, e.donor);
+        let actionCell;
+        if (!isTaken) {
+          actionCell = `<button class="claim-btn" onclick="openClaim(${i})">תפוס</button>`;
+        } else if (isAdmin) {
+          actionCell = `<button class="admin-edit-btn" onclick="openEdit(${i})">✏️</button>`;
+        } else if (canSelfEdit) {
+          actionCell = `<button class="admin-edit-btn" onclick="openMyEdit(${i})" style="border-color:#f59e0b; color:#92400e;">✏️</button>`;
+        } else {
+          actionCell = `<span class="lock-icon">🔒</span>`;
+        }
 
         html += `<tr class="${rowClass}">
           <td>${i + 1}</td>
@@ -319,7 +346,8 @@
         const res = await fetch(API_BASE + '/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const json = await res.json();
         if (json.ok) {
-          showMsg('success', `הפרשה נתפסה בהצלחה!`);
+          saveMyClaim(currentEditIndex, donor);
+          showMsg('success', `הפרשה נתפסה בהצלחה! ניתן לערוך/לבטל ב-10 הדקות הקרובות.`);
           closeModal();
           await fetchData();
         } else {
@@ -328,6 +356,67 @@
       } catch (e) {
         showMsg('error', 'שגיאת רשת');
       }
+    }
+
+    function openMyEdit(index) {
+      currentEditIndex = index;
+      const entry = appData.entries[index];
+      document.getElementById('modalTitle').textContent = 'עריכת התרומה שלי';
+      document.getElementById('modalParsha').textContent = entry.parsha + (entry.dateHe ? ' • ' + entry.dateHe : '');
+      document.getElementById('modalDonor').value = entry.donor || '';
+      document.getElementById('modalEventType').value = entry.eventType || '';
+      document.getElementById('modalNotes').value = entry.notes || '';
+      document.getElementById('modalDonor').readOnly = false;
+      document.getElementById('modalActions').innerHTML = `
+        <button class="btn-confirm" onclick="submitMyEdit()">שמור שינויים</button>
+        <button class="btn-unlock" onclick="submitMyCancel()">בטל תרומה</button>
+        <button class="btn-cancel" onclick="closeModal()">חזור</button>`;
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    async function submitMyEdit() {
+      const entry = appData.entries[currentEditIndex];
+      const body = {
+        action: 'edit',
+        parshaIndex: currentEditIndex,
+        donor: entry.donor,
+        newDonor: document.getElementById('modalDonor').value.trim(),
+        eventType: document.getElementById('modalEventType').value,
+        notes: document.getElementById('modalNotes').value.trim()
+      };
+      try {
+        const res = await fetch(API_BASE + '/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (json.ok) {
+          // Update session claim if donor name changed
+          const newDonor = body.newDonor || entry.donor;
+          removeMyClaim(currentEditIndex);
+          saveMyClaim(currentEditIndex, newDonor);
+          showMsg('success', 'התרומה עודכנה בהצלחה!');
+          closeModal();
+          await fetchData();
+        } else {
+          showMsg('error', json.error || 'שגיאה');
+        }
+      } catch (e) { showMsg('error', 'שגיאת רשת'); }
+    }
+
+    async function submitMyCancel() {
+      if (!confirm('לבטל את התרומה? הפרשה תחזור לפנויה.')) return;
+      const entry = appData.entries[currentEditIndex];
+      const body = { action: 'edit', parshaIndex: currentEditIndex, donor: entry.donor, cancel: true };
+      try {
+        const res = await fetch(API_BASE + '/edit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const json = await res.json();
+        if (json.ok) {
+          removeMyClaim(currentEditIndex);
+          showMsg('success', 'התרומה בוטלה — הפרשה חזרה לפנויה.');
+          closeModal();
+          await fetchData();
+        } else {
+          showMsg('error', json.error || 'שגיאה');
+        }
+      } catch (e) { showMsg('error', 'שגיאת רשת'); }
     }
 
     async function submitAdmin() {
