@@ -2493,59 +2493,140 @@
             isFixedMember: Boolean(fixedMap[name])
           };
         })
-        .filter(member => member.eventsSinceLastAliyah >= minWeeks)
+        .filter(member => member.eventsSinceLastAliyah >= minWeeks && !isGuestMember(member.name))
         .sort((a, b) => a.name.localeCompare(b.name, 'he'));
     }
 
-    function toggleLongAbsentGuest(memberName) {
-      const marked = Boolean(getGuestMembersMap()[memberName]);
-      if (marked) unmarkLongAbsentGuest(memberName);
-      else markLongAbsentGuest(memberName);
+    // ---- Long Absent: 10-second countdown timers ----
+    const longAbsentPendingTimers = {};
+
+    function startLongAbsentGuestCountdown(containerEl, memberName) {
+      if (longAbsentPendingTimers[memberName]) return;
+      let remaining = 10;
+      const esc = memberName.replace(/'/g, "\\'");
+
+      function updateUI() {
+        containerEl.innerHTML =
+          `<span style="font-size:0.85rem; font-weight:700; color:#dc2626;">⏳ סימון כאורח בעוד ${remaining} שניות...</span>` +
+          `<button class="btn" onclick="cancelLongAbsentCountdown('${esc}')" style="padding:5px 12px; font-size:0.82rem; background:#6b7280; color:white; border-radius:8px; font-weight:700;">❌ ביטול</button>`;
+      }
+      updateUI();
+
+      const intervalId = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(intervalId);
+          delete longAbsentPendingTimers[memberName];
+          executeMarkAsGuest(memberName);
+        } else {
+          updateUI();
+        }
+      }, 1000);
+
+      longAbsentPendingTimers[memberName] = { intervalId };
     }
 
-    function markLongAbsentGuest(memberName) {
-      setGuestMember(memberName, true);
-      alert(`"${memberName}" סומן כאורח בצורה בולטת, והוא יוחרג מספירות המתפללים הקבועים.`);
-      renderLongAbsentTab();
-      renderAll();
+    function startLongAbsentFixedCountdown(containerEl, memberName) {
+      if (longAbsentPendingTimers[memberName]) return;
+      let remaining = 10;
+      const esc = memberName.replace(/'/g, "\\'");
+
+      function updateUI() {
+        containerEl.innerHTML =
+          `<span style="font-size:0.85rem; font-weight:700; color:#1d4ed8;">⏳ סימון כמתפלל קבוע בעוד ${remaining} שניות...</span>` +
+          `<button class="btn" onclick="cancelLongAbsentCountdown('${esc}')" style="padding:5px 12px; font-size:0.82rem; background:#6b7280; color:white; border-radius:8px; font-weight:700;">❌ ביטול</button>`;
+      }
+      updateUI();
+
+      const intervalId = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(intervalId);
+          delete longAbsentPendingTimers[memberName];
+          executeMarkAsFixed(memberName);
+        } else {
+          updateUI();
+        }
+      }, 1000);
+
+      longAbsentPendingTimers[memberName] = { intervalId };
     }
 
-    function unmarkLongAbsentGuest(memberName) {
-      setGuestMember(memberName, false);
-      alert(`"${memberName}" הוגדר כמתפלל קבוע. מהפעם הבאה הוא לא ייחשב יותר כאורח.`);
+    function cancelLongAbsentCountdown(memberName) {
+      const timer = longAbsentPendingTimers[memberName];
+      if (timer) {
+        clearInterval(timer.intervalId);
+        delete longAbsentPendingTimers[memberName];
+      }
       renderLongAbsentTab();
-      renderAll();
+    }
+
+    function executeMarkAsGuest(memberName) {
+      const newName = memberName + ' - אורח';
+      const data = loadData();
+      if (!data.members[memberName]) return;
+
+      // Rename member
+      if (data.members[newName]) {
+        data.members[newName].aliyot = (Number(data.members[newName].aliyot) || 0) + (Number(data.members[memberName].aliyot) || 0);
+      } else {
+        data.members[newName] = data.members[memberName];
+      }
+      delete data.members[memberName];
+
+      // Update history
+      data.history.forEach(h => {
+        h.names = h.names.map(n => n.includes(memberName) ? n.replace(memberName, newName) : n);
+      });
+
+      // Update attendance
+      const att = JSON.parse(localStorage.getItem('gabbai_attendance') || '{}');
+      if (att[memberName]) {
+        if (!att[newName]) att[newName] = att[memberName];
+        delete att[memberName];
+        localStorage.setItem('gabbai_attendance', JSON.stringify(att));
+      }
+
+      // Clean up guest & fixed maps
+      const guestMap = getGuestMembersMap();
+      delete guestMap[memberName];
+      localStorage.setItem('gabbai_guest_members', JSON.stringify(guestMap));
+
+      const fixedMap = getFixedMembersMap();
+      if (fixedMap[memberName]) {
+        delete fixedMap[memberName];
+        localStorage.setItem('gabbai_fixed_members', JSON.stringify(fixedMap));
+      }
+
+      // Update notes & tags
+      const notes = JSON.parse(localStorage.getItem('gabbai_notes') || '{}');
+      if (notes[memberName]) {
+        if (!notes[newName]) notes[newName] = notes[memberName];
+        delete notes[memberName];
+        localStorage.setItem('gabbai_notes', JSON.stringify(notes));
+      }
+      const tags = JSON.parse(localStorage.getItem('gabbai_tags') || '{}');
+      if (tags[memberName]) {
+        if (!tags[newName]) tags[newName] = tags[memberName];
+        delete tags[memberName];
+        localStorage.setItem('gabbai_tags', JSON.stringify(tags));
+      }
+
+      saveData(data);
+      renderUI();
+    }
+
+    function executeMarkAsFixed(memberName) {
+      setFixedMember(memberName, true);
+      renderUI();
     }
 
     function toggleLongAbsentGuest(memberName) {
       const marked = getGuestMembersMap()[memberName];
       if (marked) {
         setGuestMember(memberName, false);
-        alert(`בוטל סימון "מתפלל אורח" עבור "${memberName}". הוא חזר למתפלל רגיל.`);
-      } else {
-        setGuestMember(memberName, true);
-        alert(`"${memberName}" סומן כ"מתפלל אורח" ויוחרג מהספירות. אפשר לבטל בכל רגע מרשימת האורחים המסומנים.`);
+        renderUI();
       }
-      renderAll();
-    }
-
-    function markLongAbsentFixed(memberName) {
-      setFixedMember(memberName, true);
-      alert(`"${memberName}" הוגדר כמתפלל קבוע בעדיפות. הוא יקבל קדימות בהמלצות ובשיבוץ.`);
-      renderAll();
-    }
-
-    function unmarkLongAbsentFixed(memberName) {
-      setFixedMember(memberName, false);
-      alert(`בוטלה העדיפות של "${memberName}" כמתפלל קבוע.`);
-      renderAll();
-    }
-
-    function convertLongAbsentFixedToGuest(memberName) {
-      setFixedMember(memberName, false);
-      setGuestMember(memberName, true);
-      alert(`"${memberName}" הוחזר להגדרת אורח. אפשר להגדיר שוב כמתפלל קבוע בכל רגע.`);
-      renderAll();
     }
 
     function renderLongAbsentTab() {
@@ -2580,39 +2661,28 @@
 
       const legendHtml = `
         <div style="padding:10px 12px; border:1px solid #fca5a5; background:#fef2f2; color:#7f1d1d; border-radius:10px; margin-bottom:10px; font-size:0.9rem; font-weight:600;">
-          סימון אורח בולט: מתפלל שסומן כאורח מוצג באדום ויוחרג מספירות קבועות.
+          סימון אורח: לאחר לחיצה ימתין 10 שניות — אפשר לבטל. לאחר מכן השם ישתנה ל"שם - אורח" והמתפלל יוחרג מדוחות.
           <br />
-          אפשר תמיד לבטל סימון ולהחזיר למתפלל קבוע.
+          סימון מתפלל קבוע: לאחר 10 שניות הכפתורים ייעלמו.
         </div>
       `;
 
       listEl.innerHTML = legendHtml + filteredMembers.map(m => {
         const esc = m.name.replace(/'/g, "\\'");
-        const guestActions = m.isManuallyGuest
-          ? `<button class="btn btn-success" onclick="unmarkLongAbsentGuest('${esc}')" title="בטל סימון אורח" aria-label="החזר כמתפלל קבוע" style="padding:7px 12px; font-size:0.82rem; background:#16a34a;">✅ החזר כמתפלל קבוע</button>`
-          : `<button class="btn" onclick="markLongAbsentGuest('${esc}')" title="סמן מתפלל כאורח" aria-label="סמן מתפלל כאורח" style="padding:7px 12px; font-size:0.82rem; background:#dc2626; color:white; border:1px solid #b91c1c; font-weight:700;">🚩 סמן כאורח</button>`;
-        const fixedActions = m.isFixedMember
-          ? `<button class="btn btn-secondary" onclick="unmarkLongAbsentFixed('${esc}')" title="בטל עדיפות מתפלל קבוע" aria-label="בטל עדיפות מתפלל קבוע" style="padding:7px 12px; font-size:0.82rem; background:#334155; color:white;">⭐ בטל עדיפות קבוע</button>`
-          : `<button class="btn btn-secondary" onclick="markLongAbsentFixed('${esc}')" title="הגדר כמתפלל קבוע בעדיפות" aria-label="הגדר כמתפלל קבוע בעדיפות" style="padding:7px 12px; font-size:0.82rem; background:#1d4ed8; color:white;">⭐ סמן כמתפלל קבוע</button>`;
-        const guestBadge = m.isManuallyGuest
-          ? '<span style="background:#b91c1c; color:white; padding:4px 10px; border-radius:999px; font-size:0.8rem; font-weight:800;">אורח • מוחרג מקבועים</span>'
-          : '';
         const fixedBadge = m.isFixedMember
           ? '<span style="background:#1d4ed8; color:white; padding:4px 10px; border-radius:999px; font-size:0.8rem; font-weight:800;">מתפלל קבוע • עדיפות עליה</span>'
           : '';
-        const fixedStateFeedback = m.isFixedMember
-          ? '<span style="display:inline-block; padding:6px 10px; border-radius:8px; background:#dbeafe; color:#1e3a8a; font-size:0.82rem; font-weight:700;">✅ המשתמש הוגדר כמתפלל קבוע</span>'
-          : '';
-        const revertToGuestAction = m.isFixedMember
-          ? `<button class="btn" onclick="convertLongAbsentFixedToGuest('${esc}')" title="החזר להגדרת אורח" aria-label="החזר להגדרת אורח" style="padding:7px 12px; font-size:0.82rem; background:#dc2626; color:white; border:1px solid #b91c1c; font-weight:700;">↩️ החזר לאורח</button>`
-          : '';
-        const actionsHtml = m.isFixedMember ? `${fixedStateFeedback}${revertToGuestAction}` : `${fixedActions}${guestActions}`;
+        const actionsHtml = m.isFixedMember
+          ? `<span style="display:inline-block; padding:6px 10px; border-radius:8px; background:#dbeafe; color:#1e3a8a; font-size:0.82rem; font-weight:700;">✅ מתפלל קבוע</span>`
+          : `<div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+              <button class="btn btn-secondary" onclick="startLongAbsentFixedCountdown(this.parentNode, '${esc}')" title="הגדר כמתפלל קבוע" aria-label="הגדר כמתפלל קבוע" style="padding:7px 12px; font-size:0.82rem; background:#1d4ed8; color:white;">⭐ סמן כמתפלל קבוע</button>
+              <button class="btn" onclick="startLongAbsentGuestCountdown(this.parentNode, '${esc}')" title="סמן מתפלל כאורח" aria-label="סמן מתפלל כאורח" style="padding:7px 12px; font-size:0.82rem; background:#dc2626; color:white; border:1px solid #b91c1c; font-weight:700;">🚩 סמן כאורח</button>
+            </div>`;
         return `
-          <div class="member-item" style="${m.isManuallyGuest ? 'opacity:0.95; border-color:#fecaca; background:#fff7ed;' : ''}">
+          <div class="member-item">
             <div class="member-right">
               <div class="badge-circle bg-red">${m.eventsSinceLastAliyah}</div>
               <div class="member-name clickable-name" onclick="openProfile('${esc}')">${m.name}</div>
-              ${guestBadge}
               ${fixedBadge}
             </div>
             <div class="member-left">
