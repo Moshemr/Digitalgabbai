@@ -83,7 +83,7 @@
         <input type="password" id="adminPass" placeholder="סיסמת מנהל">
         <button onclick="loginAdmin()">כניסה</button>
         <span id="adminStatus" style="font-size:0.8rem;"></span>
-        <button onclick="initYear()" style="background:#7c3aed; margin-right:8px;">אתחול שנה תשפ״ו</button>
+        <button onclick="initYearFromHebcal('תשפ״ז')" style="background:#7c3aed; margin-right:8px;">אתחול שנה תשפ״ז</button>
       </div>
     </div>
 
@@ -110,8 +110,9 @@
     <div class="modal">
       <h2 id="modalTitle">תפוס פרשה</h2>
       <div class="parsha-title" id="modalParsha"></div>
+      <datalist id="membersList"></datalist>
       <label>שם התורם</label>
-      <input type="text" id="modalDonor" placeholder="השם שלך">
+      <input type="text" id="modalDonor" placeholder="התחל להקליד שם..." list="membersList" autocomplete="off">
       <label>סוג אירוע</label>
       <select id="modalEventType">
         <option value="">ללא ציון מיוחד</option>
@@ -320,49 +321,105 @@
       setTimeout(() => { el.innerHTML = ''; }, 4000);
     }
 
-    async function initYear() {
-      if (!isAdmin || !adminPassword) { alert('נא להתחבר כמנהל'); return; }
-      if (!confirm('אתחול שנה חדשה? זה ימחק נתונים קיימים.')) return;
-
-      const entries = [
-        {parsha:"וילך",dateHe:"ה׳ תשרי",dateGreg:"27.09"},{parsha:"האזינו",dateHe:"י״ב תשרי",dateGreg:"4.10"},
-        {parsha:"שבת חול המועד",dateHe:"י״ט תשרי",dateGreg:"11.10"},{parsha:"בראשית",dateHe:"כ״ז תשרי",dateGreg:"18.10"},
-        {parsha:"נח",dateHe:"ג׳ חשוון",dateGreg:"25.10"},{parsha:"לך לך",dateHe:"י׳ חשוון",dateGreg:"1.11"},
-        {parsha:"וירא",dateHe:"י״ז חשוון",dateGreg:"8.11"},{parsha:"חיי שרה",dateHe:"כ״ד חשוון",dateGreg:"15.11"},
-        {parsha:"תולדות",dateHe:"ב׳ כסלו",dateGreg:"22.11"},{parsha:"ויצא",dateHe:"ט׳ כסלו",dateGreg:"29.11"},
-        {parsha:"וישלח",dateHe:"ט״ז כסלו",dateGreg:"6.12"},{parsha:"וישב",dateHe:"כ״ג כסלו",dateGreg:"13.12"},
-        {parsha:"מקץ",dateHe:"ל׳ כסלו",dateGreg:"20.12"},{parsha:"ויגש",dateHe:"ז׳ טבת",dateGreg:"27.12"},
-        {parsha:"ויחי",dateHe:"י״ד טבת",dateGreg:"3.01"},{parsha:"שמות",dateHe:"כ״א טבת",dateGreg:"10.01"},
-        {parsha:"וארא",dateHe:"כ״ח טבת",dateGreg:"17.01"},{parsha:"בא",dateHe:"א׳ שבט",dateGreg:"24.01"},
-        {parsha:"בשלח",dateHe:"י״ג שבט",dateGreg:"31.01"},{parsha:"יתרו",dateHe:"כ׳ שבט",dateGreg:"7.02"},
-        {parsha:"משפטים",dateHe:"כ״ז שבט",dateGreg:"14.02"},{parsha:"תרומה",dateHe:"ד׳ אדר",dateGreg:"21.02"},
-        {parsha:"תצוה",dateHe:"י״א אדר",dateGreg:"28.02"},{parsha:"כי תשא",dateHe:"י״ח אדר",dateGreg:"7.03"},
-        {parsha:"ויקהל פקודי",dateHe:"כ״ה אדר",dateGreg:"14.03"},{parsha:"ויקרא",dateHe:"ג׳ ניסן",dateGreg:"21.03"},
-        {parsha:"צו",dateHe:"י׳ ניסן",dateGreg:"28.03"},{parsha:"שמיני",dateHe:"כ״ד ניסן",dateGreg:"11.04"},
-        {parsha:"תזריע מצורע",dateHe:"א׳ אייר",dateGreg:"18.04"},{parsha:"אחרי קדושים",dateHe:"ח׳ אייר",dateGreg:"25.04"},
-        {parsha:"אמור",dateHe:"ט״ו אייר",dateGreg:"2.05"},{parsha:"בהר בחוקותי",dateHe:"כ״ב אייר",dateGreg:"9.05"},
-        {parsha:"במדבר",dateHe:"כ״ט אייר",dateGreg:"16.05"},{parsha:"נשא",dateHe:"ז׳ סיוון",dateGreg:"23.05"},
-        {parsha:"בהעלותך",dateHe:"י״ד סיוון",dateGreg:"30.05"},{parsha:"שלח",dateHe:"כ״א סיוון",dateGreg:"6.06"},
-        {parsha:"קרח",dateHe:"כ״ח סיוון",dateGreg:"13.06"},{parsha:"חקת",dateHe:"ה׳ תמוז",dateGreg:"20.06"},
-        {parsha:"בלק",dateHe:"י״ב תמוז",dateGreg:"27.06"},{parsha:"פנחס",dateHe:"י״ט תמוז",dateGreg:"4.07"},
-        {parsha:"מטות מסעי",dateHe:"כ״ו תמוז",dateGreg:"11.07"},{parsha:"דברים",dateHe:"ד׳ אב",dateGreg:"18.07"},
-        {parsha:"ואתחנן",dateHe:"י״א אב",dateGreg:"25.07"},{parsha:"עקב",dateHe:"י״ח אב",dateGreg:"1.08"},
-        {parsha:"ראה",dateHe:"כ״ה אב",dateGreg:"8.08"},{parsha:"שופטים",dateHe:"ב׳ אלול",dateGreg:"15.08"},
-        {parsha:"כי תצא",dateHe:"ט׳ אלול",dateGreg:"22.08"},{parsha:"כי תבוא",dateHe:"ט״ז אלול",dateGreg:"29.08"},
-        {parsha:"ניצבים וילך",dateHe:"כ״ג אלול",dateGreg:"5.09"}
-      ].map(e => ({ ...e, donor:'', eventType:'', notes:'', locked:false, lockedAt:'', additionalDonors:[] }));
-
-      const body = { action:'init', password:adminPassword, year:'תשפ״ו', entries };
+    // Load member names from main app for autocomplete
+    async function loadMembers() {
       try {
+        const res = await fetch('/api/state', { headers: { 'X-Gabbai-Site': 'chabad-main' } });
+        const json = await res.json();
+        if (json.ok && json.state?.localStore?.gabbai_db_v7_final) {
+          const db = JSON.parse(json.state.localStore.gabbai_db_v7_final);
+          if (db.members) {
+            const names = Object.keys(db.members).sort((a, b) => a.localeCompare(b, 'he'));
+            const dl = document.getElementById('membersList');
+            dl.innerHTML = names.map(n => `<option value="${n}">`).join('');
+          }
+        }
+      } catch (e) { /* silent — autocomplete is optional */ }
+    }
+
+    async function initYearFromHebcal(hebrewYear) {
+      if (!isAdmin || !adminPassword) { alert('נא להתחבר כמנהל'); return; }
+      if (!confirm(`אתחול שנת ${hebrewYear}? זה ימחק נתונים קיימים.`)) return;
+
+      showMsg('success', '🔄 טוען פרשיות מ-Hebcal...');
+
+      try {
+        // Fetch full year sedrot from Hebcal
+        const gregYear1 = hebrewYear === 'תשפ״ז' ? 2026 : 2025;
+        const gregYear2 = gregYear1 + 1;
+        const url1 = `https://www.hebcal.com/hebcal?v=1&cfg=json&year=${gregYear1}&month=x&ss=on&c=off&lg=he&i=on&geo=none`;
+        const url2 = `https://www.hebcal.com/hebcal?v=1&cfg=json&year=${gregYear2}&month=x&ss=on&c=off&lg=he&i=on&geo=none`;
+
+        const [res1, res2] = await Promise.all([fetch(url1), fetch(url2)]);
+        const [data1, data2] = await Promise.all([res1.json(), res2.json()]);
+
+        const allItems = [...(data1.items || []), ...(data2.items || [])];
+        const parshaItems = allItems.filter(i => i.category === 'parashat');
+
+        // Filter to Hebrew year range (Tishrei gregYear1+1 month 9 to Elul gregYear2 month 8)
+        // Rosh Hashana 5787 = Sept 2026, ends Elul 5787 = Sept 2027
+        const roshHashana = new Date(gregYear1, 8, 1); // approx start search
+        const nextRH = new Date(gregYear2, 8, 30);
+
+        const filtered = parshaItems
+          .filter(i => {
+            const d = new Date(i.date);
+            return d >= roshHashana && d <= nextRH;
+          })
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Remove duplicates by date
+        const seen = new Set();
+        const unique = filtered.filter(i => {
+          if (seen.has(i.date)) return false;
+          seen.add(i.date);
+          return true;
+        });
+
+        if (!unique.length) {
+          showMsg('error', 'לא נמצאו פרשיות. נסה שנית.');
+          return;
+        }
+
+        const entries = unique.map(i => {
+          const d = new Date(i.date);
+          const dayMonth = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+          const parsha = (i.hebrew || i.title || '').replace(/^פרשת\s+/, '');
+          // Get Hebrew date
+          let dateHe = '';
+          try {
+            const fmt = (opts) => new Intl.DateTimeFormat('he-IL-u-ca-hebrew', opts).format(d);
+            const hDay = parseInt(fmt({ day: 'numeric' }));
+            const hMonth = fmt({ month: 'long' });
+            const ones = ['','א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ז׳','ח׳','ט׳'];
+            const sp = [[15,'ט״ו'],[16,'ט״ז']];
+            const tens = ['','י׳','כ׳','ל׳'];
+            const found = sp.find(x => x[0] === hDay);
+            let dayStr = found ? found[1] : '';
+            if (!dayStr) {
+              const t = Math.floor(hDay/10), o = hDay%10;
+              if (o===0) dayStr = ['','י׳','כ׳','ל׳'][t];
+              else if (t===0) dayStr = ones[o];
+              else dayStr = ['','י','כ','ל'][t] + '״' + ['','א','ב','ג','ד','ה','ו','ז','ח','ט'][o];
+            }
+            dateHe = dayStr + ' ' + hMonth;
+          } catch(e) {}
+          return { parsha, dateHe, dateGreg: dayMonth, donor:'', eventType:'', notes:'', locked:false, lockedAt:'', additionalDonors:[] };
+        });
+
+        const body = { action:'init', password:adminPassword, year:hebrewYear, entries };
         const res = await fetch(API_BASE + '/init', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
         const json = await res.json();
-        if (json.ok) { showMsg('success','טבלת השנה אותחלה!'); await fetchData(); }
+        if (json.ok) { showMsg('success', `טבלת ${hebrewYear} אותחלה עם ${entries.length} פרשיות!`); await fetchData(); }
         else showMsg('error', json.error);
-      } catch(e) { showMsg('error','שגיאת רשת'); }
+      } catch(e) {
+        showMsg('error', 'שגיאה בטעינת פרשיות: ' + e.message);
+      }
     }
 
     // Init
     fetchData();
+    loadMembers();
     // Auto-refresh every 30 seconds
     setInterval(fetchData, 30000);
   </script>
