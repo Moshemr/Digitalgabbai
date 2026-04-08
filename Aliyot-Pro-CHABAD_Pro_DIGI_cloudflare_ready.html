@@ -828,6 +828,7 @@
     <main>
       <datalist id="membersDatalist"></datalist>
       <section id="dashboard" class="tab-panel active" role="tabpanel">
+        <div id="yahrzeitBanner"></div>
         <div style="background:#e0f2fe; border:2px solid #0369a1; border-radius:12px; padding:15px; margin-bottom:16px; text-align:center;">
           <strong style="color:#0c4a6e;">📌 הערה חשובה:</strong>
           <span style="color:#075985;"> הסטטיסטיקות והניתוחים מתייחסים רק לישראלים רגילים (ללא כהנים, לויים ורבנים שעולים לפי הלכה/תפקיד)</span>
@@ -1728,6 +1729,133 @@
       localStorage.setItem('gabbai_fixed_members', JSON.stringify(fixedMap));
     }
 
+    // =========================================
+    // YAHRZEIT (אזכרה) MANAGEMENT
+    // =========================================
+    const HEBREW_MONTHS = [
+      { num: 1, name: 'תשרי' }, { num: 2, name: 'חשוון' }, { num: 3, name: 'כסלו' },
+      { num: 4, name: 'טבת' }, { num: 5, name: 'שבט' }, { num: 6, name: 'אדר' },
+      { num: 7, name: 'ניסן' }, { num: 8, name: 'אייר' }, { num: 9, name: 'סיוון' },
+      { num: 10, name: 'תמוז' }, { num: 11, name: 'אב' }, { num: 12, name: 'אלול' },
+      { num: 13, name: 'אדר א׳' }, { num: 14, name: 'אדר ב׳' }
+    ];
+
+    function getYahrzeitsMap() {
+      return JSON.parse(localStorage.getItem('gabbai_yahrzeits') || '{}');
+    }
+
+    function saveYahrzeitsMap(map) {
+      localStorage.setItem('gabbai_yahrzeits', JSON.stringify(map));
+    }
+
+    function addYahrzeit(memberName, yahrzeit) {
+      const map = getYahrzeitsMap();
+      if (!map[memberName]) map[memberName] = [];
+      map[memberName].push(yahrzeit);
+      saveYahrzeitsMap(map);
+    }
+
+    function removeYahrzeit(memberName, index) {
+      const map = getYahrzeitsMap();
+      if (map[memberName]) {
+        map[memberName].splice(index, 1);
+        if (map[memberName].length === 0) delete map[memberName];
+        saveYahrzeitsMap(map);
+      }
+    }
+
+    function getHebrewDateComponents(date) {
+      date = date || new Date();
+      try {
+        const fmt = (opts) => new Intl.DateTimeFormat('he-IL-u-ca-hebrew', opts).format(date);
+        const day = parseInt(fmt({ day: 'numeric' }));
+        const monthName = fmt({ month: 'long' });
+        return { day, monthName };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function hebrewMonthNameToLabel(monthName) {
+      // Normalize Intl month names to our labels
+      const n = String(monthName || '').trim();
+      if (n.includes('תשרי')) return 'תשרי';
+      if (n.includes('חשוון') || n.includes('מרחשוון')) return 'חשוון';
+      if (n.includes('כסלו')) return 'כסלו';
+      if (n.includes('טבת')) return 'טבת';
+      if (n.includes('שבט')) return 'שבט';
+      if (n === 'אדר' || n === 'אדר א׳' || n.includes('אדר I')) return 'אדר';
+      if (n === 'אדר ב׳' || n.includes('אדר II')) return 'אדר ב׳';
+      if (n.includes('ניסן')) return 'ניסן';
+      if (n.includes('אייר')) return 'אייר';
+      if (n.includes('סיוון') || n.includes('סיון')) return 'סיוון';
+      if (n.includes('תמוז')) return 'תמוז';
+      if (n.includes('אב')) return 'אב';
+      if (n.includes('אלול')) return 'אלול';
+      return n;
+    }
+
+    function getUpcomingYahrzeits(daysAhead = 7) {
+      const map = getYahrzeitsMap();
+      if (!Object.keys(map).length) return [];
+
+      // Build a set of Hebrew dates for the next daysAhead days
+      const upcomingDates = [];
+      for (let i = 0; i <= daysAhead; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        const heb = getHebrewDateComponents(d);
+        if (heb) {
+          upcomingDates.push({ day: heb.day, month: hebrewMonthNameToLabel(heb.monthName), daysUntil: i, gregDate: d });
+        }
+      }
+
+      const results = [];
+      Object.entries(map).forEach(([memberName, yahrzeits]) => {
+        yahrzeits.forEach(y => {
+          const yMonthName = HEBREW_MONTHS.find(m => m.num === y.hebrewMonth)?.name || '';
+          const match = upcomingDates.find(ud => ud.day === y.hebrewDay && ud.month === yMonthName);
+          if (match) {
+            results.push({
+              memberName,
+              deceased: y.deceased,
+              relation: y.relation,
+              hebrewDateStr: numToGematria(y.hebrewDay) + ' ב' + yMonthName,
+              daysUntil: match.daysUntil
+            });
+          }
+        });
+      });
+
+      results.sort((a, b) => a.daysUntil - b.daysUntil);
+      return results;
+    }
+
+    function handleAddYahrzeit(memberName) {
+      const deceased = document.getElementById('yahrzeitDeceased')?.value.trim();
+      const relation = document.getElementById('yahrzeitRelation')?.value.trim();
+      const month = parseInt(document.getElementById('yahrzeitMonth')?.value);
+      const day = parseInt(document.getElementById('yahrzeitDay')?.value);
+      if (!deceased) { alert('נא להזין שם הנפטר/ת'); return; }
+      if (!month || !day) { alert('נא לבחור חודש ויום עברי'); return; }
+      addYahrzeit(memberName, { deceased, relation, hebrewMonth: month, hebrewDay: day });
+      openProfile(memberName);
+    }
+
+    function buildYahrzeitWhatsAppMessage(item) {
+      let timeLabel = '';
+      if (item.daysUntil === 0) timeLabel = 'היום';
+      else if (item.daysUntil === 1) timeLabel = 'מחר';
+      else timeLabel = `בעוד ${item.daysUntil} ימים`;
+
+      return `שלום,\n` +
+        `תזכורת מבית חב״ד קרית רבין מגדל העמק:\n\n` +
+        `🕯️ יארצייט של ${item.deceased}` + (item.relation ? ` (${item.relation})` : '') + `\n` +
+        `📅 חל ב-${item.hebrewDateStr} (${timeLabel})\n\n` +
+        `נשמח לראותך בבית הכנסת לאמירת קדיש.\n` +
+        `ת.נ.צ.ב.ה`;
+    }
+
     // פונקציה לזיהוי כהנים/לויים/רבנים/אורחים
     function isSpecialRole(memberName, dataRef = null) {
       const name = String(memberName || '').trim().toLowerCase();
@@ -1976,7 +2104,38 @@
       } catch (_) {}
       renderUI();
     }
+    function renderYahrzeitBanner() {
+      const el = document.getElementById('yahrzeitBanner');
+      if (!el) return;
+      const upcoming = getUpcomingYahrzeits(7);
+      if (!upcoming.length) { el.innerHTML = ''; return; }
+
+      const waSvg = '<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:white;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>';
+
+      const items = upcoming.map(item => {
+        const timeLabel = item.daysUntil === 0 ? '<strong style="color:#fbbf24;">היום!</strong>' :
+                          item.daysUntil === 1 ? '<strong style="color:#fb923c;">מחר</strong>' :
+                          `בעוד ${item.daysUntil} ימים`;
+        const msg = buildYahrzeitWhatsAppMessage(item);
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        return `<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.15);">
+          <div style="flex:1;">
+            <div style="font-weight:700;">${item.memberName}</div>
+            <div style="font-size:0.85rem; opacity:0.9;">${item.deceased}${item.relation ? ' (' + item.relation + ')' : ''} • ${item.hebrewDateStr} • ${timeLabel}</div>
+          </div>
+          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="wa-circle-btn" style="width:36px;height:36px;min-width:36px;flex-shrink:0;" title="שלח תזכורת בוואטסאפ">${waSvg}</a>
+        </div>`;
+      }).join('');
+
+      el.innerHTML = `
+        <div style="background:linear-gradient(135deg,#6b1c2a,#8b2240); color:white; border-radius:14px; padding:16px; margin-bottom:16px; box-shadow:0 4px 12px rgba(107,28,42,0.3);">
+          <div style="font-size:1.1rem; font-weight:800; margin-bottom:8px;">🕯️ אזכרות קרובות (${upcoming.length})</div>
+          ${items}
+        </div>`;
+    }
+
     function renderUI() {
+      renderYahrzeitBanner();
       const stats = getStats();
       // Stats
       document.getElementById('statTotalMembers').textContent = stats.totalMembers;
@@ -4039,8 +4198,48 @@
       // Notes
       html += `<div class="profile-section">
         <div class="profile-section-title">📝 הערות פרטיות</div>
-        <textarea class="profile-notes" id="profileNotes" placeholder="יארצייט, העדפות עלייה, הערות..."
+        <textarea class="profile-notes" id="profileNotes" placeholder="העדפות עלייה, הערות..."
           oninput="saveProfileNote('${name.replace(/'/g,"\\'")}')">${notes[name] || ''}</textarea>
+      </div>`;
+
+      // Yahrzeits
+      const yahrzeitsMap = getYahrzeitsMap();
+      const memberYahrzeits = yahrzeitsMap[name] || [];
+      const esc = name.replace(/'/g, "\\'");
+      html += `<div class="profile-section">
+        <div class="profile-section-title">🕯️ יארצייט / אזכרות</div>`;
+      if (memberYahrzeits.length) {
+        memberYahrzeits.forEach((y, i) => {
+          const mName = HEBREW_MONTHS.find(m => m.num === y.hebrewMonth)?.name || '';
+          const dateStr = numToGematria(y.hebrewDay) + ' ב' + mName;
+          html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; margin:4px 0; background:#fdf2f4; border:1px solid #e8b4bc; border-radius:8px; font-size:0.88rem;">
+            <div>
+              <strong>${y.deceased}</strong>${y.relation ? ` <span style="color:var(--text-muted);">(${y.relation})</span>` : ''}
+              <span style="color:#6b1c2a; font-weight:700; margin-right:6px;">${dateStr}</span>
+            </div>
+            <button onclick="removeYahrzeit('${esc}',${i});openProfile('${esc}');" style="background:none; border:none; cursor:pointer; color:#ef4444; font-size:1rem; padding:4px;" title="מחק אזכרה">✕</button>
+          </div>`;
+        });
+      } else {
+        html += `<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:8px;">אין אזכרות רשומות</div>`;
+      }
+      html += `
+        <div style="margin-top:10px; padding:10px; background:#f8fafc; border-radius:10px; border:1px solid var(--border);">
+          <div style="font-size:0.82rem; font-weight:700; margin-bottom:8px; color:#6b1c2a;">הוסף אזכרה חדשה</div>
+          <input type="text" id="yahrzeitDeceased" class="form-control" placeholder="שם הנפטר/ת" style="margin-bottom:6px; font-size:0.88rem;">
+          <input type="text" id="yahrzeitRelation" class="form-control" placeholder="קרבה (אבא, אמא, סבא...)" style="margin-bottom:6px; font-size:0.88rem;">
+          <div style="display:flex; gap:6px; margin-bottom:8px;">
+            <select id="yahrzeitMonth" class="form-control" style="flex:1; font-size:0.88rem;">
+              <option value="">חודש עברי...</option>
+              ${HEBREW_MONTHS.map(m => `<option value="${m.num}">${m.name}</option>`).join('')}
+            </select>
+            <select id="yahrzeitDay" class="form-control" style="flex:0 0 80px; font-size:0.88rem;">
+              <option value="">יום...</option>
+              ${Array.from({length:30},(_,i)=> `<option value="${i+1}">${numToGematria(i+1)}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="handleAddYahrzeit('${esc}')" style="width:100%; font-size:0.88rem; min-height:38px; background:#6b1c2a;">🕯️ הוסף אזכרה</button>
+        </div>
       </div>`;
 
       html += `</div>`; // end main
