@@ -80,6 +80,7 @@
     #printPage .p-title { font-size: 11pt; font-weight: 700; }
     #printPage .p-sub { font-size: 7pt; opacity: 0.8; }
     #printPage .p-bsd { position: absolute; top: 2px; right: 6px; font-size: 7pt; }
+    #printPage .p-memorial { position: absolute; top: 2px; left: 6px; font-size: 6pt; max-width: 60mm; text-align: left; line-height: 1.2; }
     #printPage .p-stats { text-align: center; font-size: 7pt; padding: 2px 0; border-bottom: 1px solid #6b1c2a; margin-bottom: 2px; color: #333; }
     #printPage .p-single { width: 100%; }
     #printPage table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -455,6 +456,7 @@
         <div class="p-wrap" style="position:relative;">
           <div class="p-header" style="position:relative;">
             <span class="p-bsd">בס"ד</span>
+            <span class="p-memorial">🕯️ לעילוי נשמת יפה בת דבורה ז״ל • רחמים בן ממה ז״ל 🕯️</span>
             <img src="/logo.jpeg" alt="חב״ד" style="height:42px; border-radius:4px;">
             <div>
               <div class="p-title">התוועדויות - תרומות קידוש</div>
@@ -463,7 +465,7 @@
           </div>
           <div class="p-stats">תפוסות: ${taken} | פנויות: ${free} | סה"כ: ${entries.length} | הודפס: ${new Date().toLocaleDateString('he-IL')}</div>
           <div class="p-single">${buildTable(entries)}</div>
-          <div class="p-footer">בית חב"ד קרית רבין - מגדל העמק - כל הלב לכל אחד<br>🕯️ לעילוי נשמת יפה בת דבורה ז״ל • רחמים בן ממה ז״ל 🕯️</div>
+          <div class="p-footer">בית חב"ד קרית רבין - מגדל העמק - כל הלב לכל אחד</div>
         </div>`;
 
       setTimeout(() => window.print(), 100);
