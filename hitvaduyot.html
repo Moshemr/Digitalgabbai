@@ -91,7 +91,6 @@
     #printPage .dn { font-weight: 700; font-size: 6.5pt; }
     #printPage .ev { background: #fef3c7; font-size: 5.5pt; padding: 0 2px; border-radius: 2px; }
     #printPage .prt { font-size: 5.5pt; color: #6b1c2a; }
-    #printPage .p-footer { text-align: center; font-size: 6pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 2px; margin-top: 2px; }
     .print-header, .print-footer { display: none; }
   </style>
 </head>
@@ -465,7 +464,6 @@
           </div>
           <div class="p-stats">תפוסות: ${taken} | פנויות: ${free} | סה"כ: ${entries.length} | הודפס: ${new Date().toLocaleDateString('he-IL')}</div>
           <div class="p-single">${buildTable(entries)}</div>
-          <div class="p-footer">בית חב"ד קרית רבין - מגדל העמק - כל הלב לכל אחד<br>🕯️ לעילוי נשמת יפה בת דבורה ז״ל • רחמים בן ממה ז״ל 🕯️</div>
         </div>`;
 
       setTimeout(() => window.print(), 100);
