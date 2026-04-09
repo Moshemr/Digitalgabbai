@@ -99,7 +99,7 @@
   <header>
     <div class="bsd">בס״ד</div>
     <button class="admin-toggle" onclick="toggleAdmin()">ניהול</button>
-    <div class="logo"><img src="chabad-logo.svg" alt="חב״ד — כל הלב לכל אחד"></div>
+    <div class="logo"><img src="logo.jpeg" alt="חב״ד — כל הלב לכל אחד"></div>
     <h1>התוועדויות - תרומות קידוש</h1>
     <p>בית חב״ד קרית רבין • מגדל העמק</p>
     <div class="year-badge" id="yearBadge">טוען...</div>
@@ -130,7 +130,15 @@
         <option value="free">פנויות בלבד</option>
         <option value="taken">תפוסות בלבד</option>
       </select>
+      <select id="hitSortType" onchange="onSortTypeChange()" style="padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem;">
+        <option value="">מיון...</option>
+        <option value="book">לפי ספר</option>
+        <option value="donor">לפי תורם</option>
+      </select>
+      <select id="hitSortValue" onchange="render()" style="padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; display:none;">
+      </select>
     </div>
+    <div id="resultsCount" style="font-size:0.82rem; color:var(--gray); margin-bottom:8px; display:none;"></div>
     <div id="adminShareBar" style="display:none; margin-bottom:10px;"></div>
     <div class="print-header" id="printHeader"></div>
     <div id="tableContainer"><div class="loading">🔄 טוען נתונים...</div></div>
@@ -188,6 +196,43 @@
     let isEditMode = false;
     const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
+    const TORAH_BOOKS = {
+      'בראשית': ['בראשית', 'נח', 'לך לך', 'וירא', 'חיי שרה', 'תולדות', 'ויצא', 'וישלח', 'וישב', 'מקץ', 'ויגש', 'ויחי'],
+      'שמות': ['שמות', 'וארא', 'בא', 'בשלח', 'יתרו', 'משפטים', 'תרומה', 'תצוה', 'כי תשא', 'ויקהל', 'פקודי'],
+      'ויקרא': ['ויקרא', 'צו', 'שמיני', 'תזריע', 'מצורע', 'אחרי מות', 'קדושים', 'אמור', 'בהר', 'בחוקותי'],
+      'במדבר': ['במדבר', 'נשא', 'בהעלותך', 'שלח', 'קרח', 'חקת', 'בלק', 'פנחס', 'מטות', 'מסעי'],
+      'דברים': ['דברים', 'ואתחנן', 'עקב', 'ראה', 'שופטים', 'כי תצא', 'כי תבוא', 'ניצבים', 'וילך', 'האזינו', 'וזאת הברכה']
+    };
+
+    function getBookForParsha(parsha) {
+      const clean = parsha.replace(/^פרשת\s+/, '');
+      for (const [book, parshiot] of Object.entries(TORAH_BOOKS)) {
+        if (parshiot.some(p => clean.includes(p) || p.includes(clean))) return book;
+      }
+      return '';
+    }
+
+    function onSortTypeChange() {
+      const sortType = document.getElementById('hitSortType').value;
+      const sortValueEl = document.getElementById('hitSortValue');
+      if (!sortType) {
+        sortValueEl.style.display = 'none';
+        sortValueEl.innerHTML = '';
+        render();
+        return;
+      }
+      sortValueEl.style.display = 'block';
+      if (sortType === 'book') {
+        sortValueEl.innerHTML = '<option value="">כל הספרים</option>' +
+          Object.keys(TORAH_BOOKS).map(b => `<option value="${b}">${b}</option>`).join('');
+      } else if (sortType === 'donor') {
+        const donors = [...new Set(appData.entries.filter(e => e.donor).map(e => e.donor))].sort();
+        sortValueEl.innerHTML = '<option value="">כל התורמים</option>' +
+          donors.map(d => `<option value="${d}">${d}</option>`).join('');
+      }
+      render();
+    }
+
     function getMyClaims() {
       try { return JSON.parse(sessionStorage.getItem('myClaimedParshas') || '[]'); } catch(e) { return []; }
     }
@@ -241,6 +286,8 @@
       // Search & filter
       const search = (document.getElementById('hitSearch')?.value || '').trim().toLowerCase();
       const filter = document.getElementById('hitFilter')?.value || 'all';
+      const sortType = document.getElementById('hitSortType')?.value || '';
+      const sortValue = document.getElementById('hitSortValue')?.value || '';
 
       // Admin share bar — encourage donations for unclaimed parshas
       const adminShareEl = document.getElementById('adminShareBar');
@@ -277,8 +324,18 @@
 
         // Apply search
         if (search) {
-          const haystack = `${e.parsha} ${e.donor || ''} ${e.eventType || ''} ${e.notes || ''} ${e.dateHe || ''}`.toLowerCase();
+          const haystack = `${e.parsha} ${e.donor || ''} ${(e.additionalDonors||[]).join(' ')} ${e.eventType || ''} ${e.notes || ''} ${e.dateHe || ''}`.toLowerCase();
           if (!haystack.includes(search)) return;
+        }
+
+        // Apply sort/filter by type
+        if (sortType === 'book' && sortValue) {
+          const book = getBookForParsha(e.parsha);
+          if (book !== sortValue) return;
+        }
+        if (sortType === 'donor' && sortValue) {
+          const allDonors = [e.donor || '', ...(e.additionalDonors || [])].join(' ');
+          if (!allDonors.includes(sortValue)) return;
         }
 
         visibleCount++;
@@ -319,6 +376,16 @@
 
       html += '</tbody></table>';
       document.getElementById('tableContainer').innerHTML = html;
+
+      // Show results count when filtering
+      const rcEl = document.getElementById('resultsCount');
+      const isFiltering = search || filter !== 'all' || (sortType && sortValue);
+      if (isFiltering) {
+        rcEl.style.display = 'block';
+        rcEl.textContent = `מציג ${visibleCount} מתוך ${allEntries.length} שורות`;
+      } else {
+        rcEl.style.display = 'none';
+      }
     }
 
     function shareUnclaimed() {
@@ -388,7 +455,7 @@
         <div class="p-wrap" style="position:relative;">
           <div class="p-header" style="position:relative;">
             <span class="p-bsd">בס"ד</span>
-            <img src="/chabad-logo.svg" alt="חב״ד" style="height:42px; border-radius:4px;">
+            <img src="/logo.jpeg" alt="חב״ד" style="height:42px; border-radius:4px;">
             <div>
               <div class="p-title">התוועדויות - תרומות קידוש</div>
               <div class="p-sub">בית חב"ד קרית רבין - מגדל העמק | ${appData.year || ''}</div>
