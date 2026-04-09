@@ -74,22 +74,21 @@
     #printPage { display: none; }
     #printPage * { box-sizing: border-box; }
     #printPage .p-wrap { width: 200mm; margin: 0 auto; direction: rtl; font-family: 'Segoe UI', system-ui, sans-serif; color: #000; }
-    #printPage .p-header { background: #6b1c2a; color: white; text-align: center; padding: 6px 10px; border-radius: 0; display: flex; align-items: center; justify-content: center; gap: 12px; }
+    #printPage .p-header { background: #6b1c2a; color: white; text-align: center; padding: 4px 10px; border-radius: 0; display: flex; align-items: center; justify-content: center; gap: 12px; }
     #printPage .p-logo { display: flex; flex-direction: column; align-items: center; }
-    #printPage .p-logo img { height: 36px; width: auto; }
+    #printPage .p-logo img { height: 30px; width: auto; }
     #printPage .p-title { font-size: 11pt; font-weight: 700; }
     #printPage .p-sub { font-size: 7pt; opacity: 0.8; }
-    #printPage .p-bsd { position: absolute; top: 3px; right: 8px; font-size: 8pt; }
+    #printPage .p-bsd { position: absolute; top: 2px; right: 6px; font-size: 7pt; }
     #printPage .p-stats { text-align: center; font-size: 7pt; padding: 2px 0; border-bottom: 1px solid #6b1c2a; margin-bottom: 2px; color: #333; }
-    #printPage .p-cols { display: flex; gap: 4px; }
-    #printPage .p-col { flex: 1; }
-    #printPage table { width: 100%; border-collapse: collapse; }
-    #printPage th { background: #6b1c2a; color: white; font-size: 6pt; padding: 2px 2px; border: 0.5px solid #999; text-align: center; }
-    #printPage td { font-size: 6.5pt; padding: 1.5px 2px; border: 0.5px solid #ccc; text-align: center; line-height: 1.2; }
+    #printPage .p-single { width: 100%; }
+    #printPage table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    #printPage th { background: #6b1c2a; color: white; font-size: 7pt; padding: 2px 2px; border: 0.5px solid #999; text-align: center; }
+    #printPage td { font-size: 6.5pt; padding: 1px 2px; border: 0.5px solid #ccc; text-align: center; line-height: 1.15; word-wrap: break-word; overflow-wrap: break-word; }
     #printPage tr.tk { background: #fdf2f4; }
     #printPage .pn { font-weight: 800; color: #6b1c2a; font-size: 7pt; }
     #printPage .dn { font-weight: 700; font-size: 6.5pt; }
-    #printPage .ev { background: #fef3c7; font-size: 5pt; padding: 0 2px; border-radius: 2px; }
+    #printPage .ev { background: #fef3c7; font-size: 5.5pt; padding: 0 2px; border-radius: 2px; }
     #printPage .prt { font-size: 5.5pt; color: #6b1c2a; }
     #printPage .p-footer { text-align: center; font-size: 6pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 2px; margin-top: 2px; }
     .print-header, .print-footer { display: none; }
@@ -434,21 +433,17 @@
       const entries = appData.entries;
       const taken = entries.filter(e => e.donor).length;
       const free = entries.length - taken;
-      const mid = Math.ceil(entries.length / 2);
-      const col1 = entries.slice(0, mid);
-      const col2 = entries.slice(mid);
 
-      function buildCol(arr, startIdx) {
-        let h = `<table><thead><tr><th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th><th>הערות</th></tr></thead><tbody>`;
+      function buildTable(arr) {
+        let h = `<table><thead><tr><th style="width:6%;">#</th><th style="width:16%;">פרשה</th><th style="width:18%;">תאריך</th><th style="width:30%;">תורם</th><th style="width:30%;">הערות</th></tr></thead><tbody>`;
         arr.forEach((e, i) => {
-          const idx = startIdx + i + 1;
           const cls = e.donor ? ' class="tk"' : '';
           const partners = (e.additionalDonors || []).length ? `<br><span class="prt">+ ${e.additionalDonors.join(', ')}</span>` : '';
           const evBadge = e.eventType ? ` <span class="ev">${e.eventType}</span>` : '';
           const donor = e.donor ? `<span class="dn">${e.donor}</span>${partners}${evBadge}` : '';
           const dateStr = [e.dateHe, e.dateGreg].filter(Boolean).join(' - ');
           const notes = e.notes || '';
-          h += `<tr${cls}><td>${idx}</td><td class="pn">${e.parsha}</td><td style="white-space:nowrap;">${dateStr}</td><td>${donor}</td><td style="font-size:5.5pt;">${notes}</td></tr>`;
+          h += `<tr${cls}><td>${i + 1}</td><td class="pn">${e.parsha}</td><td style="white-space:nowrap;">${dateStr}</td><td>${donor}</td><td>${notes}</td></tr>`;
         });
         h += '</tbody></table>';
         return h;
@@ -466,10 +461,7 @@
             </div>
           </div>
           <div class="p-stats">תפוסות: ${taken} | פנויות: ${free} | סה"כ: ${entries.length} | הודפס: ${new Date().toLocaleDateString('he-IL')}</div>
-          <div class="p-cols">
-            <div class="p-col">${buildCol(col1, 0)}</div>
-            <div class="p-col">${buildCol(col2, mid)}</div>
-          </div>
+          <div class="p-single">${buildTable(entries)}</div>
           <div class="p-footer">בית חב"ד קרית רבין - מגדל העמק - כל הלב לכל אחד</div>
         </div>`;
 
