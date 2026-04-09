@@ -11,8 +11,8 @@
     .container { max-width:700px; margin:0 auto; padding:12px; }
     header { background:var(--brand); color:white; text-align:center; padding:20px 16px 16px; position:relative; }
     header .bsd { position:absolute; top:8px; right:12px; font-size:0.85rem; opacity:0.7; }
-    .logo { font-family:'Frank Ruhl Libre','David',serif; font-size:1.8rem; font-weight:900; letter-spacing:1px; }
-    .logo .bet { background:linear-gradient(160deg,#f5a623,#e8880c); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .logo { display:inline-block; }
+    .logo img { height:60px; width:auto; display:block; }
     header h1 { font-size:1.2rem; font-weight:700; margin-top:6px; }
     header p { font-size:0.82rem; opacity:0.8; margin-top:4px; }
     .year-badge { display:inline-block; background:rgba(255,255,255,0.2); padding:2px 14px; border-radius:20px; font-size:0.85rem; font-weight:700; margin-top:8px; }
@@ -76,9 +76,7 @@
     #printPage .p-wrap { width: 200mm; margin: 0 auto; direction: rtl; font-family: 'Segoe UI', system-ui, sans-serif; color: #000; }
     #printPage .p-header { background: #6b1c2a; color: white; text-align: center; padding: 6px 10px; border-radius: 0; display: flex; align-items: center; justify-content: center; gap: 12px; }
     #printPage .p-logo { display: flex; flex-direction: column; align-items: center; }
-    #printPage .p-logo-text { font-family: 'Frank Ruhl Libre','David',serif; font-size: 22pt; font-weight: 900; letter-spacing: 1px; line-height: 1; }
-    #printPage .p-logo-text .bet { color: #f5a623; }
-    #printPage .p-logo-slogan { font-size: 6pt; opacity: 0.8; }
+    #printPage .p-logo img { height: 36px; width: auto; }
     #printPage .p-title { font-size: 11pt; font-weight: 700; }
     #printPage .p-sub { font-size: 7pt; opacity: 0.8; }
     #printPage .p-bsd { position: absolute; top: 3px; right: 8px; font-size: 8pt; }
@@ -101,7 +99,7 @@
   <header>
     <div class="bsd">בס״ד</div>
     <button class="admin-toggle" onclick="toggleAdmin()">ניהול</button>
-    <div class="logo"><span>ח</span><span class="bet">ב</span><span>״</span><span>ד</span></div>
+    <div class="logo"><img src="chabad-logo.svg" alt="חב״ד — כל הלב לכל אחד"></div>
     <h1>התוועדויות - תרומות קידוש</h1>
     <p>בית חב״ד קרית רבין • מגדל העמק</p>
     <div class="year-badge" id="yearBadge">טוען...</div>
@@ -266,7 +264,7 @@
       }
 
       let html = `<table><thead><tr>
-        <th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th><th class="no-print"></th>
+        <th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th><th>הערות</th><th class="no-print"></th>
       </tr></thead><tbody>`;
 
       let visibleCount = 0;
@@ -290,8 +288,9 @@
         const timeStamp = e.lockedAt
           ? `<br><span style="font-size:0.65rem; color:#94a3b8;">${new Date(e.lockedAt).toLocaleDateString('he-IL')} ${new Date(e.lockedAt).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>` : '';
         const donorCell = isTaken
-          ? `<span class="donor-name">${e.donor}</span>${partners}${e.eventType ? `<br><span class="event-badge">${e.eventType}</span>` : ''}${e.notes ? `<br><span class="notes-text">${e.notes}</span>` : ''}${timeStamp}`
+          ? `<span class="donor-name">${e.donor}</span>${partners}${e.eventType ? `<br><span class="event-badge">${e.eventType}</span>` : ''}${timeStamp}`
           : '';
+        const notesCell = e.notes ? `<span class="notes-text">${e.notes}</span>` : '';
         const canSelfEdit = isTaken && isMyEditableEntry(i, e.donor);
         let actionCell;
         if (!isTaken) {
@@ -309,12 +308,13 @@
           <td class="parsha-name">${e.parsha}</td>
           <td>${e.dateHe || ''}<br><span style="font-size:0.7rem;color:var(--gray);">${e.dateGreg || ''}</span></td>
           <td>${donorCell}</td>
+          <td>${notesCell}</td>
           <td class="no-print">${actionCell}</td>
         </tr>`;
       });
 
       if (!visibleCount) {
-        html += `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--gray);">לא נמצאו תוצאות</td></tr>`;
+        html += `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--gray);">לא נמצאו תוצאות</td></tr>`;
       }
 
       html += '</tbody></table>';
@@ -368,7 +368,7 @@
       const col2 = entries.slice(mid);
 
       function buildCol(arr, startIdx) {
-        let h = `<table><thead><tr><th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th></tr></thead><tbody>`;
+        let h = `<table><thead><tr><th>#</th><th>פרשה</th><th>תאריך</th><th>תורם</th><th>הערות</th></tr></thead><tbody>`;
         arr.forEach((e, i) => {
           const idx = startIdx + i + 1;
           const cls = e.donor ? ' class="tk"' : '';
@@ -376,7 +376,8 @@
           const evBadge = e.eventType ? ` <span class="ev">${e.eventType}</span>` : '';
           const donor = e.donor ? `<span class="dn">${e.donor}</span>${partners}${evBadge}` : '';
           const dateStr = [e.dateHe, e.dateGreg].filter(Boolean).join(' - ');
-          h += `<tr${cls}><td>${idx}</td><td class="pn">${e.parsha}</td><td style="white-space:nowrap;">${dateStr}</td><td>${donor}</td></tr>`;
+          const notes = e.notes || '';
+          h += `<tr${cls}><td>${idx}</td><td class="pn">${e.parsha}</td><td style="white-space:nowrap;">${dateStr}</td><td>${donor}</td><td style="font-size:5.5pt;">${notes}</td></tr>`;
         });
         h += '</tbody></table>';
         return h;
